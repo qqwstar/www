@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>角色卡画廊 | 修复分区读取历史发布 + 发布可用</title>
+<title>角色卡画廊 | 新增搜索栏 + 个人关注功能</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/font-awesome@4.7.0/css/font-awesome.min.css"/>
 <script>
@@ -48,28 +48,44 @@ img {
   -webkit-user-select: none;
   pointer-events: none;
 }
+.search-input:focus{box-shadow:0 0 0 2px #3b82f650;}
 </style>
 </head>
 <body class="text-textDark bg-bgLight pb-24 overflow-x-hidden">
 
+<!-- 首页 -->
 <div id="homePage" class="page active">
   <header class="py-6 text-center">
     <h1 class="text-3xl font-bold text-mainBlue">角色卡画廊</h1>
     <p class="text-slate-500 mt-1">下拉手动刷新 · 全局共享</p>
   </header>
+
+  <!-- 全局搜索栏 -->
+  <div class="max-w-6xl mx-auto px-4 mb-4">
+    <div class="relative">
+      <input id="searchInput" onkeyup="doSearch()" class="search-input w-full rounded-full border border-slate-300 py-2.5 px-5 pr-10 bg-white" placeholder="搜索作者 / 角色文案...">
+      <i class="fa fa-search absolute right-4 top-3 text-slate-400"></i>
+    </div>
+    <div id="searchTip" class="text-sm text-slate-500 mt-2 hidden">搜索结果：<span id="searchCount">0</span> 条</div>
+  </div>
+
   <div id="refreshTip" class="text-center py-2 text-mainBlue hidden">
     <i class="fa fa-refresh fa-spin"></i> 同步中...
   </div>
+
   <div class="flex justify-center gap-2 px-4 mb-6">
     <button onclick="switchTab('星野')" class="tab px-5 py-2 rounded-full border border-mainBlue tab-active">星野</button>
     <button onclick="switchTab('mufy')" class="tab px-5 py-2 rounded-full border border-mainBlue">mufy</button>
     <button onclick="switchTab('kira')" class="tab px-5 py-2 rounded-full border border-mainBlue">kira</button>
   </div>
+
+  <!-- 普通卡片列表 / 搜索结果列表 -->
   <div class="max-w-6xl mx-auto px-4">
     <div id="cardGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5"></div>
   </div>
 </div>
 
+<!-- 个人主页 -->
 <div id="userPage" class="page">
   <div class="max-w-xl mx-auto px-4 pt-10">
     <div class="bg-white rounded-2xl p-6 text-center shadow-md">
@@ -86,14 +102,36 @@ img {
       <textarea id="userBio" rows="3" placeholder="写下你的个人简介..."
       class="mt-4 w-full bg-slate-100 rounded-lg p-3 resize-none"
       onblur="saveUserInfo()"></textarea>
-      <p class="text-slate-600 mt-4">我的发布：<span id="myCardCount">0</span>｜个人屏蔽：<span id="blockCount">0</span></p>
-      <button onclick="openBlockList()" class="btn-interactive mt-3 bg-mainBlue px-4 py-1 rounded-lg text-white text-sm">查看屏蔽列表</button>
+      <div class="flex flex-wrap justify-center gap-3 mt-4">
+        <span class="text-slate-600">我的发布：<span id="myCardCount">0</span></span>
+        <span class="text-slate-600">已关注：<span id="followCount">0</span></span>
+        <span class="text-slate-600">个人屏蔽：<span id="blockCount">0</span></span>
+      </div>
+      <div class="flex gap-3 justify-center mt-4">
+        <button onclick="openFollowList()" class="btn-interactive bg-mainBlue px-4 py-1 rounded-lg text-white text-sm">我的关注</button>
+        <button onclick="openBlockList()" class="btn-interactive bg-slate-500 px-4 py-1 rounded-lg text-white text-sm">屏蔽列表</button>
+      </div>
     </div>
     <h3 class="mt-8 text-xl text-slate-700">我的发布</h3>
     <div id="myCardGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4"></div>
   </div>
 </div>
 
+<!-- 关注列表弹窗 -->
+<div id="followModal" class="fixed inset-0 bg-black/60 z-50 hidden p-5 overflow-auto">
+  <div class="max-w-md mx-auto bg-white rounded-2xl p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-bold text-slate-700">我的关注列表</h2>
+      <button onclick="closeFollowList()" class="btn-interactive text-2xl text-slate-500"><i class="fa fa-times"></i></button>
+    </div>
+    <div id="followWrap" class="space-y-3 mb-6"></div>
+    <button onclick="closeFollowList()" class="btn-interactive w-full bg-mainBlue text-white py-3 rounded-lg">
+      <i class="fa fa-sign-out mr-1"></i> 关闭
+    </button>
+  </div>
+</div>
+
+<!-- 屏蔽列表弹窗 -->
 <div id="blockModal" class="fixed inset-0 bg-black/60 z-50 hidden p-5 overflow-auto">
   <div class="max-w-md mx-auto bg-white rounded-2xl p-6">
     <div class="flex justify-between items-center mb-4">
@@ -107,6 +145,7 @@ img {
   </div>
 </div>
 
+<!-- 底部导航 -->
 <div class="fixed bottom-0 left-0 w-full bg-white shadow-lg border-t border-slate-200 flex items-center justify-around py-2 z-40">
   <button onclick="switchPage('home')" class="btn-interactive flex-1 py-3 text-center text-slate-600">
     <i class="fa fa-th-large block text-xl"></i><span class="text-sm">首页</span>
@@ -119,6 +158,7 @@ img {
   </button>
 </div>
 
+<!-- 发布弹窗 -->
 <div id="uploadModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
   <div class="bg-white w-full max-w-md rounded-2xl p-6">
     <h2 class="text-xl mb-2 font-bold text-slate-700">发布全局角色卡</h2>
@@ -147,13 +187,19 @@ img {
   </div>
 </div>
 
+<!-- 详情弹窗 -->
 <div id="detailModal" class="fixed inset-0 bg-black/60 z-50 hidden p-5 overflow-auto">
   <button onclick="closeDetailModal()" class="btn-interactive float-right text-3xl mb-4 text-white"><i class="fa fa-times"></i></button>
   <div class="max-w-lg w-full mx-auto">
     <canvas id="protectCanvas" class="w-full max-h-[60vh] rounded-xl"></canvas>
     <p class="text-slate-200 text-sm mt-2">分区：<span id="detailCate"></span></p>
     <p id="modalDesc" class="mt-3 text-white whitespace-pre-wrap"></p>
-    <div class="mt-6 flex gap-3">
+    <div class="mt-4">
+      <button id="followAuthorBtn" onclick="toggleFollowCurrent()" class="btn-interactive w-full bg-indigo-500 text-white py-2 rounded-lg mb-3">
+        关注该作者
+      </button>
+    </div>
+    <div class="mt-2 flex gap-3">
       <button id="delBtn" onclick="confirmDelete()" class="btn-interactive flex-1 bg-red-600 text-white py-3 rounded-lg">
         <i class="fa fa-trash mr-1"></i> 删除我的卡片
       </button>
@@ -178,6 +224,7 @@ const GLOBAL_CARD_KEY = "globalAllCards";
 const BLOCK_KEY = "userBlockList";
 const DRAFT_KEY = "cardDraft";
 const USER_KEY = "userProfile";
+const FOLLOW_KEY = "userFollowList";
 
 document.addEventListener('copy',e=>e.preventDefault());
 document.addEventListener('cut',e=>e.preventDefault());
@@ -209,7 +256,130 @@ function drawProtectImage(imgSrc){
   img.src = imgSrc;
 }
 
-// ===== 全局数据 每次都实时读取localStorage =====
+// ========== 关注储存 ==========
+function getFollowList(){
+  return JSON.parse(localStorage.getItem(FOLLOW_KEY)) || [];
+}
+function saveFollowList(arr){
+  localStorage.setItem(FOLLOW_KEY, JSON.stringify(arr));
+}
+function isFollowed(name){
+  return getFollowList().includes(name);
+}
+function toggleFollowCurrent(){
+  if(!currentCard) return;
+  let me = getUserInfo();
+  if(currentCard.author === me.name){
+    alert("不能关注自己");
+    return;
+  }
+  let list = getFollowList();
+  let auth = currentCard.author;
+  if(list.includes(auth)){
+    list = list.filter(x=>x!==auth);
+  }else{
+    list.push(auth);
+  }
+  saveFollowList(list);
+  refreshFollowBtn();
+}
+function refreshFollowBtn(){
+  if(!currentCard) return;
+  let btn = document.getElementById("followAuthorBtn");
+  if(isFollowed(currentCard.author)){
+    btn.innerText = "取消关注";
+    btn.classList.remove("bg-indigo-500");
+    btn.classList.add("bg-slate-600");
+  }else{
+    btn.innerText = "关注该作者";
+    btn.classList.add("bg-indigo-500");
+    btn.classList.remove("bg-slate-600");
+  }
+}
+function openFollowList(){
+  let list = getFollowList();
+  let wrap = document.getElementById("followWrap");
+  wrap.innerHTML = "";
+  if(list.length === 0){
+    wrap.innerHTML = '<p class="text-slate-400 text-center py-6">暂无关注作者</p>';
+  }else{
+    list.forEach(name=>{
+      let div = document.createElement("div");
+      div.className = "flex justify-between items-center p-3 bg-slate-100 rounded-lg";
+      div.innerHTML = `<span>${name}</span>
+      <button onclick="unfollowOne('${name}')" class="text-red-500 btn-interactive">取消关注</button>`;
+      wrap.appendChild(div);
+    })
+  }
+  document.getElementById("followModal").classList.remove("hidden");
+}
+function closeFollowList(){
+  document.getElementById("followModal").classList.add("hidden");
+}
+function unfollowOne(name){
+  let arr = getFollowList().filter(x=>x!==name);
+  saveFollowList(arr);
+  openFollowList();
+  renderUserPage();
+}
+
+// ========== 搜索功能 ==========
+let searchActive = false;
+function doSearch(){
+  let key = document.getElementById("searchInput").value.trim().toLowerCase();
+  if(!key){
+    searchActive = false;
+    document.getElementById("searchTip").classList.add("hidden");
+    renderHomeCards();
+    return;
+  }
+  searchActive = true;
+  let all = getFilteredCards();
+  let res = [];
+  Object.values(all).forEach(group=>{
+    group.forEach(c=>{
+      if(c.desc.toLowerCase().includes(key) || c.author.toLowerCase().includes(key)){
+        res.push(c);
+      }
+    })
+  });
+  document.getElementById("searchTip").classList.remove("hidden");
+  document.getElementById("searchCount").innerText = res.length;
+  renderSearchResult(res);
+}
+function renderSearchResult(list){
+  let wrap = document.getElementById("cardGrid");
+  wrap.innerHTML = "";
+  if(list.length===0){
+    wrap.innerHTML = '<p class="col-span-full text-center text-slate-400 py-10">暂无匹配结果</p>';
+    return;
+  }
+  list.forEach(item=>{
+    let div = document.createElement("div");
+    div.className = "bg-white rounded-xl overflow-hidden shadow-sm card-hover cursor-pointer";
+    div.onclick = ()=>openDetail(item);
+    div.innerHTML = `
+      <canvas class="w-full h-52"></canvas>
+      <div class="p-3">
+        <p class="text-sm text-slate-700 line-clamp-2">${item.desc}</p>
+        <p class="text-xs text-slate-400 mt-1">by ${item.author}</p>
+      </div>
+    `;
+    wrap.appendChild(div);
+    const cvs = div.querySelector("canvas");
+    const cx = cvs.getContext("2d");
+    let img = new Image;
+    img.src = item.img;
+    img.onload = ()=>{
+      cvs.width = img.width;
+      cvs.height = img.height;
+      cx.drawImage(img,0,0);
+      drawWatermark(cx,cvs.width,cvs.height);
+    }
+  })
+}
+
+// 全局数据
 function getGlobalCards(){
   let raw = localStorage.getItem(GLOBAL_CARD_KEY);
   if(!raw) {
@@ -223,7 +393,7 @@ function saveGlobalCards(obj){
   localStorage.setItem(GLOBAL_CARD_KEY, JSON.stringify(obj));
 }
 
-// 屏蔽过滤
+// 屏蔽
 function getBlockList(){
   return JSON.parse(localStorage.getItem(BLOCK_KEY))||{cards:[],authors:[]}
 }
@@ -240,11 +410,14 @@ function getFilteredCards(){
   return res;
 }
 
-// ===== 切换标签【实时读取对应专区历史数据】=====
+// 切换专区
 function switchTab(name){
   nowTab = name;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('tab-active'));
   event.target.classList.add('tab-active');
+  document.getElementById("searchInput").value="";
+  searchActive=false;
+  document.getElementById("searchTip").classList.add("hidden");
   renderHomeCards();
 }
 
@@ -312,13 +485,6 @@ function switchPage(type){
 }
 
 // 屏蔽弹窗
-function pushModalHistory(){ history.pushState({mod:"blk"}, "", location.href); }
-function popModalHistory(){ history.back(); }
-window.onpopstate = function(){
-  if(!document.getElementById("blockModal").classList.contains("hidden")){
-    closeBlockList();
-  }
-};
 function openBlockList(){
   let b = getBlockList();
   let wrap = document.getElementById("blockList");
@@ -340,14 +506,26 @@ function openBlockList(){
     })
   }
   document.getElementById("blockModal").classList.remove("hidden");
-  pushModalHistory();
 }
 function closeBlockList(){
   document.getElementById("blockModal").classList.add("hidden");
-  popModalHistory();
+}
+function unblockCard(id){
+  let b=getBlockList();
+  b.cards = b.cards.filter(x=>x!==id);
+  saveBlockList(b);
+  openBlockList();
+  renderHomeCards();
+}
+function unblockAuthor(n){
+  let b=getBlockList();
+  b.authors = b.authors.filter(x=>x!==n);
+  saveBlockList(b);
+  openBlockList();
+  renderHomeCards();
 }
 
-// 发布弹窗
+// 发布
 function openUploadModal(){ loadDraft(); document.getElementById('uploadModal').classList.remove('hidden'); }
 function closeUploadModal(){ autoSaveDraft(); document.getElementById("uploadModal").classList.add("hidden"); }
 
@@ -365,7 +543,6 @@ document.getElementById("imgUpload").addEventListener("change",e=>{
 })
 document.getElementById('descInput').addEventListener('input', autoSaveDraft);
 
-// 发布可用，发布后立刻写入本地、刷新当前专区列表
 function submitPublish(){
   let desc = document.getElementById("descInput").value.trim();
   let sel = document.querySelector('input[name="cateRadio"]:checked');
@@ -395,7 +572,7 @@ function submitPublish(){
   renderHomeCards();
 }
 
-// ===== 首页渲染：每次调用强制读取本地最新该分区所有已发布数据 =====
+// 首页渲染
 function renderHomeCards(){
   let freshData = getFilteredCards();
   let currentList = freshData[nowTab] || [];
@@ -443,6 +620,7 @@ function renderUserPage(){
   let blk = getBlockList();
   document.getElementById("myCardCount").innerText = mine.length;
   document.getElementById("blockCount").innerText = blk.cards.length + blk.authors.length;
+  document.getElementById("followCount").innerText = getFollowList().length;
 
   let wrap = document.getElementById("myCardGrid");
   wrap.innerHTML = "";
@@ -465,6 +643,7 @@ function renderUserPage(){
   })
 }
 
+// 卡片详情
 function openDetail(it){
   currentCard = it;
   let u = getUserInfo();
@@ -472,6 +651,7 @@ function openDetail(it){
   drawProtectImage(it.img);
   document.getElementById("modalDesc").innerText = it.desc;
   document.getElementById("detailCate").innerText = it.category + " · by "+it.author;
+  refreshFollowBtn();
   document.getElementById("detailModal").classList.remove("hidden");
 }
 function closeDetailModal(){
@@ -507,22 +687,8 @@ function confirmBlockAuthor(){
   closeDetailModal();
   renderHomeCards();
 }
-function unblockCard(id){
-  let b=getBlockList();
-  b.cards = b.cards.filter(x=>x!==id);
-  saveBlockList(b);
-  openBlockList();
-  renderHomeCards();
-}
-function unblockAuthor(n){
-  let b=getBlockList();
-  b.authors = b.authors.filter(x=>x!==n);
-  saveBlockList(b);
-  openBlockList();
-  renderHomeCards();
-}
 
-// 下拉刷新强制重读所有分区数据
+// 下拉刷新
 let startY=0;
 document.addEventListener('touchstart',e=>startY=e.touches[0].clientY);
 document.addEventListener('touchmove',e=>{
