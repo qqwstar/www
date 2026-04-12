@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>角色卡画廊 | 修复发布Bug + 仅展示水印 + 屏蔽列表退出键</title>
+<title>角色卡画廊 | 修复分区读取历史发布 + 发布可用</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/font-awesome@4.7.0/css/font-awesome.min.css"/>
 <script>
@@ -52,7 +52,6 @@ img {
 </head>
 <body class="text-textDark bg-bgLight pb-24 overflow-x-hidden">
 
-<!-- 首页 -->
 <div id="homePage" class="page active">
   <header class="py-6 text-center">
     <h1 class="text-3xl font-bold text-mainBlue">角色卡画廊</h1>
@@ -71,7 +70,6 @@ img {
   </div>
 </div>
 
-<!-- 个人主页 -->
 <div id="userPage" class="page">
   <div class="max-w-xl mx-auto px-4 pt-10">
     <div class="bg-white rounded-2xl p-6 text-center shadow-md">
@@ -96,25 +94,19 @@ img {
   </div>
 </div>
 
-<!-- 屏蔽列表弹窗（新增底部退出按钮） -->
 <div id="blockModal" class="fixed inset-0 bg-black/60 z-50 hidden p-5 overflow-auto">
   <div class="max-w-md mx-auto bg-white rounded-2xl p-6">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-xl font-bold text-slate-700">个人屏蔽管理</h2>
-      <!-- 右上角关闭 × -->
-      <button onclick="closeBlockList()" class="btn-interactive text-2xl text-slate-500">
-        <i class="fa fa-times"></i>
-      </button>
+      <button onclick="closeBlockList()" class="btn-interactive text-2xl text-slate-500"><i class="fa fa-times"></i></button>
     </div>
     <div id="blockList" class="space-y-3 mb-6"></div>
-    <!-- 底部退出按钮（新增） -->
     <button onclick="closeBlockList()" class="btn-interactive w-full bg-mainBlue text-white py-3 rounded-lg">
       <i class="fa fa-sign-out mr-1"></i> 退出屏蔽列表
     </button>
   </div>
 </div>
 
-<!-- 底部导航 -->
 <div class="fixed bottom-0 left-0 w-full bg-white shadow-lg border-t border-slate-200 flex items-center justify-around py-2 z-40">
   <button onclick="switchPage('home')" class="btn-interactive flex-1 py-3 text-center text-slate-600">
     <i class="fa fa-th-large block text-xl"></i><span class="text-sm">首页</span>
@@ -127,30 +119,34 @@ img {
   </button>
 </div>
 
-<!-- 发布弹窗 -->
 <div id="uploadModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
   <div class="bg-white w-full max-w-md rounded-2xl p-6">
     <h2 class="text-xl mb-2 font-bold text-slate-700">发布全局角色卡</h2>
     <p class="text-xs text-slate-500 mb-3">草稿自动保存 · 发布所有人可见</p>
     <div class="flex gap-2 mb-4">
-      <label class="text-sm text-slate-600"><input name="cate" type="radio" value="星野" checked class="mr-1">星野</label>
-      <label class="text-sm text-slate-600"><input name="cate" type="radio" value="mufy" class="mr-1">mufy</label>
-      <label class="text-sm text-slate-600"><input name="cate" type="radio" value="kira" class="mr-1">kira</label>
+      <label class="text-sm text-slate-600">
+        <input name="cateRadio" type="radio" value="星野" checked class="mr-1">星野
+      </label>
+      <label class="text-sm text-slate-600">
+        <input name="cateRadio" type="radio" value="mufy" class="mr-1">mufy
+      </label>
+      <label class="text-sm text-slate-600">
+        <input name="cateRadio" type="radio" value="kira" class="mr-1">kira
+      </label>
     </div>
     <input type="file" id="imgUpload" accept="image/*" class="w-full bg-slate-100 rounded-lg p-3 mb-3">
     <div id="draftPreview" class="hidden mb-3">
-      <img id="draftImg" class="w-32 h-32 object-cover rounded-lg">
+      <img id="draftImg" class="w-32 h-32 rounded-lg">
     </div>
-    <textarea id="descInput" rows="4" class="w-full bg-slate-100 rounded-lg p-3 resize-none" placeholder="角色简介..."></textarea>
+    <textarea id="descInput" rows="4" class="w-full bg-slate-100 p-3 resize-none" placeholder="角色简介..."></textarea>
     <div class="mt-5 flex gap-3">
       <button onclick="closeUploadModal()" class="btn-interactive flex-1 bg-slate-400 text-white py-2 rounded-lg">返回</button>
       <button onclick="clearDraft()" class="btn-interactive flex-1 bg-red-500 text-white py-2 rounded-lg">清空草稿</button>
-      <button onclick="publishCard()" class="btn-interactive flex-1 bg-mainBlue text-white py-2 rounded-lg">确认发布</button>
+      <button onclick="submitPublish()" class="btn-interactive flex-1 bg-mainBlue text-white py-2 rounded-lg">确认发布</button>
     </div>
   </div>
 </div>
 
-<!-- 详情弹窗 -->
 <div id="detailModal" class="fixed inset-0 bg-black/60 z-50 hidden p-5 overflow-auto">
   <button onclick="closeDetailModal()" class="btn-interactive float-right text-3xl mb-4 text-white"><i class="fa fa-times"></i></button>
   <div class="max-w-lg w-full mx-auto">
@@ -183,11 +179,10 @@ const BLOCK_KEY = "userBlockList";
 const DRAFT_KEY = "cardDraft";
 const USER_KEY = "userProfile";
 
-// 禁止复制
 document.addEventListener('copy',e=>e.preventDefault());
 document.addEventListener('cut',e=>e.preventDefault());
 
-// ========== 绘制带「仅展示」斜纹水印 ==========
+// 水印
 function drawWatermark(ctx,w,h){
   ctx.save();
   ctx.globalAlpha = 0.12;
@@ -214,17 +209,21 @@ function drawProtectImage(imgSrc){
   img.src = imgSrc;
 }
 
-// 全局数据
+// ===== 全局数据 每次都实时读取localStorage =====
 function getGlobalCards(){
-  let data = localStorage.getItem(GLOBAL_CARD_KEY);
-  if(!data) return {"星野":[],"mufy":[],"kira":[]};
-  return JSON.parse(data);
+  let raw = localStorage.getItem(GLOBAL_CARD_KEY);
+  if(!raw) {
+    let initData = {"星野":[],"mufy":[],"kira":[]};
+    localStorage.setItem(GLOBAL_CARD_KEY, JSON.stringify(initData));
+    return initData;
+  }
+  return JSON.parse(raw);
 }
 function saveGlobalCards(obj){
   localStorage.setItem(GLOBAL_CARD_KEY, JSON.stringify(obj));
 }
 
-// 屏蔽
+// 屏蔽过滤
 function getBlockList(){
   return JSON.parse(localStorage.getItem(BLOCK_KEY))||{cards:[],authors:[]}
 }
@@ -233,16 +232,17 @@ function saveBlockList(list){
 }
 function getFilteredCards(){
   let all = getGlobalCards();
-  let block = getBlockList();
-  Object.keys(all).forEach(cate=>{
-    all[cate] = all[cate].filter(c=>!block.cards.includes(c.id) && !block.authors.includes(c.authorId))
-  })
-  return all;
+  let blk = getBlockList();
+  let res = {};
+  for(let key in all){
+    res[key] = all[key].filter(it => !blk.cards.includes(it.id) && !blk.authors.includes(it.authorId));
+  }
+  return res;
 }
 
-// 分区
+// ===== 切换标签【实时读取对应专区历史数据】=====
 function switchTab(name){
-  nowTab=name;
+  nowTab = name;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('tab-active'));
   event.target.classList.add('tab-active');
   renderHomeCards();
@@ -271,7 +271,7 @@ function clearDraft(){
   document.getElementById("draftPreview").classList.add("hidden");
 }
 
-// 用户资料
+// 用户
 function getUserInfo(){return JSON.parse(localStorage.getItem(USER_KEY))||{avatar:"",name:"匿名",bio:"暂无简介"}}
 function saveUserInfo(){
   let u=getUserInfo();
@@ -283,22 +283,23 @@ function changeAvatar(e){
   let f=e.target.files[0];if(!f)return;
   let r=new FileReader();
   r.onload=res=>{
-    let u=getUserInfo();u.avatar=res.target.result;
+    let u=getUserInfo();
+    u.avatar=res.target.result;
     localStorage.setItem(USER_KEY,JSON.stringify(u));
-    document.getElementById("userAvatar").src=res.target.result
+    document.getElementById("userAvatar").src=u.avatar
   }
   r.readAsDataURL(f)
 }
 function loadUserProfile(){
   let u=getUserInfo();
-  document.getElementById("userAvatar").src=u.avatar||"https://api.dicebear.com/7.x/adventurer/svg?seed=user";
+  document.getElementById("userAvatar").src=u.avatar||"https://api.dicebear.com/7.x/adventurer";
   document.getElementById("userName").value=u.name;
   document.getElementById("userBio").value=u.bio;
 }
 
 // 页面切换
 function switchPage(type){
-  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'))
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
   if(type==='home'){
     document.getElementById('homePage').classList.add('active');
     renderHomeCards();
@@ -310,37 +311,33 @@ function switchPage(type){
   }
 }
 
-// 屏蔽弹窗返回逻辑
-function pushModalHistory(){
-  history.pushState({modal:'open'}, '', window.location.href);
-}
-function popModalHistory(){
-  history.back();
-}
-window.addEventListener('popstate', ()=>{
-  if(!document.getElementById('blockModal').classList.contains('hidden')){
+// 屏蔽弹窗
+function pushModalHistory(){ history.pushState({mod:"blk"}, "", location.href); }
+function popModalHistory(){ history.back(); }
+window.onpopstate = function(){
+  if(!document.getElementById("blockModal").classList.contains("hidden")){
     closeBlockList();
   }
-});
+};
 function openBlockList(){
-  let b=getBlockList();
-  let el=document.getElementById("blockList");
-  el.innerHTML="";
-  if(b.cards.length===0&&b.authors.length===0){
-    el.innerHTML="<p class='text-slate-500 text-center py-4'>暂无屏蔽内容</p>";
+  let b = getBlockList();
+  let wrap = document.getElementById("blockList");
+  wrap.innerHTML = "";
+  if(b.cards.length===0 && b.authors.length===0){
+    wrap.innerHTML = `<p class="text-slate-500 text-center py-4">暂无屏蔽内容</p>`;
   }else{
     b.cards.forEach(id=>{
-      let d=document.createElement("div");
+      let d = document.createElement("div");
       d.className="p-3 bg-slate-100 rounded-lg flex justify-between";
-      d.innerHTML=`<span>卡片ID:${id}</span><button onclick="unblockCard(${id})" class="text-mainBlue btn-interactive">解除</button>`;
-      el.appendChild(d);
-    });
-    b.authors.forEach(name=>{
-      let d=document.createElement("div");
+      d.innerHTML=`<span>卡片ID:${id}</span><button onclick="unblockCard(${id})" class="text-mainBlue">解除</button>`;
+      wrap.appendChild(d);
+    })
+    b.authors.forEach(n=>{
+      let d = document.createElement("div");
       d.className="p-3 bg-slate-100 rounded-lg flex justify-between";
-      d.innerHTML=`<span>作者:${name}</span><button onclick="unblockAuthor('${name}')" class="text-mainBlue btn-interactive">解除</button>`;
-      el.appendChild(d);
-    });
+      d.innerHTML=`<span>作者:${n}</span><button onclick="unblockAuthor('${n}')" class="text-mainBlue">解除</button>`;
+      wrap.appendChild(d);
+    })
   }
   document.getElementById("blockModal").classList.remove("hidden");
   pushModalHistory();
@@ -350,77 +347,71 @@ function closeBlockList(){
   popModalHistory();
 }
 
-function openUploadModal(){loadDraft();document.getElementById('uploadModal').classList.remove('hidden')}
-function closeUploadModal(){autoSaveDraft();document.getElementById("uploadModal").classList.add("hidden")}
+// 发布弹窗
+function openUploadModal(){ loadDraft(); document.getElementById('uploadModal').classList.remove('hidden'); }
+function closeUploadModal(){ autoSaveDraft(); document.getElementById("uploadModal").classList.add("hidden"); }
 
-// 上传预览
 document.getElementById("imgUpload").addEventListener("change",e=>{
-  let f=e.target.files[0];if(!f)return;
-  let r=new FileReader();
-  r.onload=ev=>{
+  let f = e.target.files[0];
+  if(!f) return;
+  let fr = new FileReader();
+  fr.onload = ev=>{
     tempImg = ev.target.result;
     document.getElementById("draftImg").src = tempImg;
     document.getElementById("draftPreview").classList.remove("hidden");
     autoSaveDraft();
   }
-  r.readAsDataURL(f)
+  fr.readAsDataURL(f);
 })
 document.getElementById('descInput').addEventListener('input', autoSaveDraft);
 
-// ========== 修复：mufy / kira 发布失效BUG，单选精准取值 ==========
-function publishCard(){
+// 发布可用，发布后立刻写入本地、刷新当前专区列表
+function submitPublish(){
   let desc = document.getElementById("descInput").value.trim();
-  // 修复点：原生可靠获取选中单选
-  let radios = document.querySelectorAll('input[name="cate"]');
-  let cate = "";
-  radios.forEach(rd=>{
-    if(rd.checked) cate = rd.value;
-  });
+  let sel = document.querySelector('input[name="cateRadio"]:checked');
 
-  if(!tempImg){
-    alert("请先上传角色图片");
-    return;
-  }
-  if(!desc){
-    alert("请填写角色简介");
-    return;
-  }
-  if(!cate){
-    alert("请选择分区");
-    return;
-  }
+  if(!tempImg){alert("请先上传图片");return;}
+  if(!desc){alert("请填写简介");return;}
+  if(!sel){alert("请选择分区");return;}
 
+  let cate = sel.value;
   let user = getUserInfo();
-  let globalData = getGlobalCards();
+  let allData = getGlobalCards();
 
-  let newItem = {
+  let newCard = {
+    id: Date.now(),
     img: tempImg,
     desc: desc,
     category: cate,
-    id: Date.now(),
     author: user.name || "匿名",
     authorId: user.name || "匿名"
   };
 
-  globalData[cate].push(newItem);
-  saveGlobalCards(globalData);
+  allData[cate].push(newCard);
+  saveGlobalCards(allData);
 
   clearDraft();
   closeUploadModal();
   renderHomeCards();
 }
 
-// 首页渲染（带水印）
+// ===== 首页渲染：每次调用强制读取本地最新该分区所有已发布数据 =====
 function renderHomeCards(){
-  let all = getFilteredCards();
-  let list = all[nowTab]||[];
+  let freshData = getFilteredCards();
+  let currentList = freshData[nowTab] || [];
   let wrap = document.getElementById("cardGrid");
-  wrap.innerHTML="";
-  list.forEach(item=>{
-    let div=document.createElement('div');
-    div.className="bg-white rounded-xl overflow-hidden shadow-sm card-hover cursor-pointer";
-    div.onclick=()=>openDetail(item);
-    div.innerHTML=`
+  wrap.innerHTML = "";
+
+  if(currentList.length === 0){
+    wrap.innerHTML = '<p class="col-span-full text-center text-slate-400 py-10">当前专区暂无发布内容</p>';
+    return;
+  }
+
+  currentList.forEach(item=>{
+    let div = document.createElement("div");
+    div.className = "bg-white rounded-xl overflow-hidden shadow-sm card-hover cursor-pointer";
+    div.onclick = ()=>openDetail(item);
+    div.innerHTML = `
       <canvas class="w-full h-52"></canvas>
       <div class="p-3">
         <p class="text-sm text-slate-700 line-clamp-2">${item.desc}</p>
@@ -428,82 +419,79 @@ function renderHomeCards(){
       </div>
     `;
     wrap.appendChild(div);
-    const c = div.querySelector('canvas');
-    const cx = c.getContext('2d');
-    const img = new Image();
+    const cvs = div.querySelector("canvas");
+    const cx = cvs.getContext("2d");
+    let img = new Image;
     img.src = item.img;
-    img.onload=()=>{
-      c.width=img.width;c.height=img.height;
-      cx.clearRect(0,0,c.width,c.height);
+    img.onload = ()=>{
+      cvs.width = img.width;
+      cvs.height = img.height;
       cx.drawImage(img,0,0);
-      drawWatermark(cx,c.width,c.height);
+      drawWatermark(cx,cvs.width,cvs.height);
     }
   })
 }
 
-// 个人页渲染（带水印）
+// 个人页
 function renderUserPage(){
   let me = getUserInfo();
-  let allGlobal = getGlobalCards();
-  let myAll = [];
-  Object.values(allGlobal).forEach(arr=>{
-    myAll.push(...arr.filter(x=>x.authorId === me.name))
-  });
-  let block = getBlockList();
-  document.getElementById("myCardCount").innerText = myAll.length;
-  document.getElementById("blockCount").innerText = block.cards.length+block.authors.length;
+  let all = getGlobalCards();
+  let mine = [];
+  Object.values(all).forEach(arr=>{
+    mine.push(...arr.filter(x=>x.authorId === me.name))
+  })
+  let blk = getBlockList();
+  document.getElementById("myCardCount").innerText = mine.length;
+  document.getElementById("blockCount").innerText = blk.cards.length + blk.authors.length;
 
   let wrap = document.getElementById("myCardGrid");
-  wrap.innerHTML="";
-  myAll.forEach(item=>{
-    let d=document.createElement('div');
-    d.className="bg-white rounded-2xl shadow-sm overflow-hidden cursor-pointer";
-    d.onclick=()=>openDetail(item);
-    d.innerHTML=`<canvas class="w-full h-40"></canvas>`;
+  wrap.innerHTML = "";
+  mine.forEach(item=>{
+    let d = document.createElement("div");
+    d.className = "bg-white rounded-2xl shadow-sm overflow-hidden cursor-pointer";
+    d.onclick = ()=>openDetail(item);
+    d.innerHTML = `<canvas class="w-full h-40"></canvas>`;
     wrap.appendChild(d);
-    const c = d.querySelector('canvas');
-    const cx = c.getContext('2d');
-    const img=new Image();
-    img.src=item.img;
-    img.onload=()=>{
-      c.width=img.width;c.height=img.height;
-      cx.clearRect(0,0,c.width,c.height);
+    let cvs = d.querySelector("canvas");
+    let cx = cvs.getContext("2d");
+    let img = new Image;
+    img.src = item.img;
+    img.onload = ()=>{
+      cvs.width = img.width;
+      cvs.height = img.height;
       cx.drawImage(img,0,0);
-      drawWatermark(cx,c.width,c.height);
+      drawWatermark(cx,cvs.width,cvs.height);
     }
   })
 }
 
-function openDetail(item){
-  currentCard=item;
-  let me = getUserInfo();
-  document.getElementById("delBtn").style.display = (item.authorId === me.name) ? "block":"none";
-  drawProtectImage(item.img);
-  document.getElementById("modalDesc").innerText=item.desc;
-  document.getElementById("detailCate").innerText=item.category+" · by "+item.author;
-  document.getElementById("detailModal").classList.remove('hidden')
+function openDetail(it){
+  currentCard = it;
+  let u = getUserInfo();
+  document.getElementById("delBtn").style.display = (it.authorId === u.name) ? "block":"none";
+  drawProtectImage(it.img);
+  document.getElementById("modalDesc").innerText = it.desc;
+  document.getElementById("detailCate").innerText = it.category + " · by "+it.author;
+  document.getElementById("detailModal").classList.remove("hidden");
 }
 function closeDetailModal(){
-  document.getElementById("detailModal").classList.add('hidden');
+  document.getElementById("detailModal").classList.add("hidden");
   currentCard=null;
 }
 
-// 删除
 function confirmDelete(){
   if(!currentCard)return;
-  if(!confirm("确定删除你的角色卡？全局同步删除"))return;
-  let global = getGlobalCards();
-  global[currentCard.category] = global[currentCard.category].filter(x=>x.id !== currentCard.id);
-  saveGlobalCards(global);
+  if(!confirm("确定删除？"))return;
+  let g = getGlobalCards();
+  g[currentCard.category] = g[currentCard.category].filter(x=>x.id !== currentCard.id);
+  saveGlobalCards(g);
   closeDetailModal();
   renderHomeCards();
   renderUserPage();
 }
-
-// 屏蔽
 function confirmBlockCard(){
   if(!currentCard)return;
-  let b=getBlockList();
+  let b = getBlockList();
   if(b.cards.includes(currentCard.id)) return;
   b.cards.push(currentCard.id);
   saveBlockList(b);
@@ -512,48 +500,47 @@ function confirmBlockCard(){
 }
 function confirmBlockAuthor(){
   if(!currentCard)return;
-  let b=getBlockList();
-  if(b.authors.includes(currentCard.authorId))return;
+  let b = getBlockList();
+  if(b.authors.includes(currentCard.authorId)) return;
   b.authors.push(currentCard.authorId);
   saveBlockList(b);
   closeDetailModal();
   renderHomeCards();
 }
-
 function unblockCard(id){
   let b=getBlockList();
-  b.cards=b.cards.filter(x=>x!==id);
+  b.cards = b.cards.filter(x=>x!==id);
   saveBlockList(b);
   openBlockList();
   renderHomeCards();
 }
-function unblockAuthor(name){
+function unblockAuthor(n){
   let b=getBlockList();
-  b.authors=b.authors.filter(x=>x!==name);
+  b.authors = b.authors.filter(x=>x!==n);
   saveBlockList(b);
   openBlockList();
   renderHomeCards();
 }
 
-// 下拉刷新
+// 下拉刷新强制重读所有分区数据
 let startY=0;
-document.addEventListener('touchstart',e=>{startY=e.touches[0].clientY})
+document.addEventListener('touchstart',e=>startY=e.touches[0].clientY);
 document.addEventListener('touchmove',e=>{
-  let moveY=e.touches[0].clientY;
-  if(window.scrollY<=0 && moveY-startY>60){
-    document.getElementById('refreshTip').classList.remove('hidden')
+  let my = e.touches[0].clientY;
+  if(window.scrollY<=0 && my-startY>60){
+    document.getElementById('refreshTip').classList.remove('hidden');
   }
-})
+});
 document.addEventListener('touchend',()=>{
   if(window.scrollY<=0){
     setTimeout(()=>{
       renderHomeCards();
-      document.getElementById('refreshTip').classList.add('hidden')
+      document.getElementById('refreshTip').classList.add('hidden');
     },600)
   }
-})
+});
 
-window.onload=renderHomeCards();
+window.onload = renderHomeCards();
 </script>
 </body>
 </html>
