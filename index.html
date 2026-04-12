@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>角色卡画廊 | 全局防截屏</title>
+<title>角色卡画廊 | 瞬时防截屏+返回优化</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/font-awesome@4.7.0/css/font-awesome.min.css"/>
 <script>
@@ -49,19 +49,17 @@ img {
   pointer-events: none;
 }
 
-/* 全局防截屏黑色遮罩 */
 #screenProtectMask{
   position: fixed;
   inset: 0;
   background:#000;
-  z-index:99999;
+  z-index:999999;
   display:none;
 }
 </style>
 </head>
 <body class="text-textDark bg-bgLight pb-24 overflow-x-hidden">
 
-<!-- 全局防截屏黑屏遮罩 -->
 <div id="screenProtectMask"></div>
 
 <!-- 首页 -->
@@ -189,30 +187,61 @@ const BLOCK_KEY = "userBlockList";
 const DRAFT_KEY = "cardDraft";
 const USER_KEY = "userProfile";
 
-// ========== 全局防截屏、防录屏、切屏保护 ==========
-function enableBlackProtect(){
+// ---------- 瞬时防截屏 ----------
+function instantBlack(){
   mask.style.display = "block";
+  queueMicrotask(()=>mask.style.display="none");
 }
-function disableBlackProtect(){
-  mask.style.display = "none";
-}
-
-// 检测页面切走、截屏触发的可见性变化
-document.addEventListener("visibilitychange",()=>{
-  if(document.hidden){
-    enableBlackProtect();
-  }else{
-    setTimeout(disableBlackProtect, 600);
-  }
-});
-// 浏览器录屏、截图API监听
-document.addEventListener("screenshot", enableBlackProtect);
-window.addEventListener("blur", enableBlackProtect);
-// 禁止复制、禁止调取开发者工具防偷图
+document.addEventListener("screenshot", instantBlack);
 document.addEventListener('copy',e=>e.preventDefault());
 document.addEventListener('cut',e=>e.preventDefault());
 
-// 手动下拉刷新
+// ---------- 弹窗历史记录（关闭返回） ----------
+function pushModalHistory(){
+  history.pushState({modal:'open'}, '', window.location.href);
+}
+function popModalHistory(){
+  history.back();
+}
+
+// ---------- 监听返回键关闭弹窗 ----------
+window.addEventListener('popstate', (e)=>{
+  if(document.getElementById('blockModal').classList.contains('hidden')) return;
+  closeBlockList();
+});
+
+// ---------- 屏蔽列表打开/关闭（带返回） ----------
+function openBlockList(){
+  let b=getBlockList();
+  let el=document.getElementById("blockList");
+  el.innerHTML="";
+  if(b.cards.length===0&&b.authors.length===0){
+    el.innerHTML="<p class='text-slate-500 text-center py-4'>暂无屏蔽内容</p>";
+  }else{
+    b.cards.forEach(id=>{
+      let d=document.createElement("div");
+      d.className="p-3 bg-slate-100 rounded-lg flex justify-between";
+      d.innerHTML=`<span>卡片ID:${id}</span><button onclick="unblockCard(${id})" class="text-mainBlue btn-interactive">解除</button>`;
+      el.appendChild(d);
+    });
+    b.authors.forEach(name=>{
+      let d=document.createElement("div");
+      d.className="p-3 bg-slate-100 rounded-lg flex justify-between";
+      d.innerHTML=`<span>作者:${name}</span><button onclick="unblockAuthor('${name}')" class="text-mainBlue btn-interactive">解除</button>`;
+      el.appendChild(d);
+    });
+  }
+  document.getElementById("blockModal").classList.remove("hidden");
+  pushModalHistory();
+}
+
+function closeBlockList(){
+  document.getElementById("blockModal").classList.add("hidden");
+  popModalHistory();
+}
+
+// ---------- 其余功能不变 ----------
+// 下拉刷新
 let startY=0;
 document.addEventListener('touchstart',e=>{startY=e.touches[0].clientY})
 document.addEventListener('touchmove',e=>{
@@ -230,7 +259,7 @@ document.addEventListener('touchend',()=>{
   }
 })
 
-// 图片画布防下载
+// 画布防下载
 function drawProtectImage(imgSrc){
   const img = new Image();
   img.crossOrigin="anonymous";
@@ -357,7 +386,7 @@ document.getElementById("imgUpload").addEventListener("change",e=>{
 })
 document.getElementById('descInput').addEventListener('input', autoSaveDraft);
 
-// 发布核心
+// 发布
 function publishCard(){
   let desc = document.getElementById("descInput").value.trim();
   let cateEle = document.querySelector('input[name="cate"]:checked');
@@ -504,30 +533,6 @@ function confirmBlockAuthor(){
   renderHomeCards();
 }
 
-function openBlockList(){
-  let b=getBlockList();
-  let el=document.getElementById("blockList");
-  el.innerHTML="";
-  if(b.cards.length===0&&b.authors.length===0){
-    el.innerHTML="<p class='text-slate-500 text-center py-4'>暂无屏蔽内容</p>";
-    document.getElementById("blockModal").classList.remove("hidden");
-    return;
-  }
-  b.cards.forEach(id=>{
-    let d=document.createElement("div");
-    d.className="p-3 bg-slate-100 rounded-lg flex justify-between";
-    d.innerHTML=`<span>卡片ID:${id}</span><button onclick="unblockCard(${id})" class="text-mainBlue btn-interactive">解除</button>`;
-    el.appendChild(d);
-  })
-  b.authors.forEach(name=>{
-    let d=document.createElement("div");
-    d.className="p-3 bg-slate-100 rounded-lg flex justify-between";
-    d.innerHTML=`<span>作者:${name}</span><button onclick="unblockAuthor('${name}')" class="text-mainBlue btn-interactive">解除</button>`;
-    el.appendChild(d);
-  })
-  document.getElementById("blockModal").classList.remove("hidden");
-}
-function closeBlockList(){document.getElementById("blockModal").classList.add("hidden")}
 function unblockCard(id){
   let b=getBlockList();
   b.cards=b.cards.filter(x=>x!==id);
