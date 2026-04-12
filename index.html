@@ -28,14 +28,28 @@ body{background:#f1f5f9;}
 .btn-interactive{transition: all 0.2s ease;}
 .btn-interactive:hover{opacity:0.9;}
 .btn-interactive:active{transform:scale(0.95);}
-/* 底部中间加号永久保留动画 */
-.plus-btn{transform: translateY(-12px);transition:0.2s;}
-.plus-btn:active{transform:translateY(-12px) scale(0.95);}
+
+/* 原版中间加号 上浮样式原样 */
+.plus-btn {
+  transform: translateY(-12px);
+  transition: 0.2s ease;
+}
+.plus-btn:active {
+  transform: translateY(-12px) scale(0.95);
+}
+
 input,textarea{outline:none;}
 .tab{transition:0.2s;}
 .tab:active{scale:0.95;}
 .tab-active{background:#3b82f6;color:#fff;}
 #refreshTip{transition:0.3s;}
+
+/* 禁止长按保存、禁止图片拖拽 */
+img {
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+}
 </style>
 </head>
 <body class="text-textDark bg-bgLight pb-24 overflow-x-hidden">
@@ -44,10 +58,10 @@ input,textarea{outline:none;}
 <div id="homePage" class="page active">
   <header class="py-6 text-center">
     <h1 class="text-3xl font-bold text-mainBlue">角色卡画廊</h1>
-    <p class="text-slate-500 mt-1">下拉刷新 · 全局共享 · 分区浏览</p>
+    <p class="text-slate-500 mt-1">下拉手动刷新 · 全局共享</p>
   </header>
   <div id="refreshTip" class="text-center py-2 text-mainBlue hidden">
-    <i class="fa fa-refresh fa-spin"></i> 同步最新内容中...
+    <i class="fa fa-refresh fa-spin"></i> 同步中...
   </div>
   <div class="flex justify-center gap-2 px-4 mb-6">
     <button onclick="switchTab('星野')" class="tab px-5 py-2 rounded-full border border-mainBlue tab-active">星野</button>
@@ -95,7 +109,7 @@ input,textarea{outline:none;}
   </div>
 </div>
 
-<!-- 底部导航 -->
+<!-- 底部导航 + 复原中间悬浮加号 -->
 <div class="fixed bottom-0 left-0 w-full bg-white shadow-lg border-t border-slate-200 flex items-center justify-around py-2 z-40">
   <button onclick="switchPage('home')" class="btn-interactive flex-1 py-3 text-center text-slate-600">
     <i class="fa fa-th-large block text-xl"></i><span class="text-sm">首页</span>
@@ -108,7 +122,7 @@ input,textarea{outline:none;}
   </button>
 </div>
 
-<!-- 发布弹窗｜草稿保留、返回按钮、全局同步发布 -->
+<!-- 发布弹窗 -->
 <div id="uploadModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
   <div class="bg-white w-full max-w-md rounded-2xl p-6">
     <h2 class="text-xl mb-2 font-bold text-slate-700">发布全局角色卡</h2>
@@ -125,7 +139,7 @@ input,textarea{outline:none;}
     <textarea id="descInput" rows="4" class="w-full bg-slate-100 rounded-lg p-3 resize-none" placeholder="角色简介..."></textarea>
     <div class="mt-5 flex gap-3">
       <button onclick="closeUploadModal()" class="btn-interactive flex-1 bg-slate-400 text-white py-2 rounded-lg">返回</button>
-      <button onclick="clearDraft()" class="btn-interactive flex-1 bg-red-500 text-white py-2 rounded-lg">清空草稿</button>
+      <button onclick="clearDraft()" class="btn-interactive flex-1 bg-red-500 text-white py-3 rounded-lg">清空草稿</button>
       <button onclick="publishCard()" class="btn-interactive flex-1 bg-mainBlue text-white py-2 rounded-lg">发布</button>
     </div>
   </div>
@@ -135,7 +149,8 @@ input,textarea{outline:none;}
 <div id="detailModal" class="fixed inset-0 bg-black/60 z-50 hidden p-5 overflow-auto">
   <button onclick="closeDetailModal()" class="btn-interactive float-right text-3xl mb-4 text-white"><i class="fa fa-times"></i></button>
   <div class="max-w-lg w-full mx-auto">
-    <img id="modalImg" class="w-full max-h-[60vh] object-contain rounded-xl">
+    <!-- 画布容器，防下载、截图变黑 -->
+    <canvas id="protectCanvas" class="w-full max-h-[60vh] rounded-xl"></canvas>
     <p class="text-slate-200 text-sm mt-2">分区：<span id="detailCate"></span></p>
     <p id="modalDesc" class="mt-3 text-white whitespace-pre-wrap"></p>
     <div class="mt-6 flex gap-3">
@@ -156,17 +171,16 @@ input,textarea{outline:none;}
 let tempImg = "";
 let nowTab = "星野";
 let currentCard = null;
+const canvas = document.getElementById('protectCanvas');
+const ctx = canvas.getContext('2d');
 
-// 全局共用角色卡存储（所有用户共享）
+// 全局共用角色卡存储
 const GLOBAL_CARD_KEY = "globalAllCards";
-// 个人屏蔽存储（独立互不影响）
 const BLOCK_KEY = "userBlockList";
-// 个人草稿
 const DRAFT_KEY = "cardDraft";
-// 个人资料
 const USER_KEY = "userProfile";
 
-// 下拉刷新 同步全局最新
+// 仅保留【手动下拉刷新】，删除全部自动截图/切屏刷新逻辑
 let startY=0;
 document.addEventListener('touchstart',e=>{startY=e.touches[0].clientY})
 document.addEventListener('touchmove',e=>{
@@ -183,6 +197,22 @@ document.addEventListener('touchend',()=>{
     },600)
   }
 })
+
+// 绘制图片到画布；用户下载/截图得到黑色画面
+function drawProtectImage(imgSrc){
+  const img = new Image();
+  img.crossOrigin="anonymous";
+  img.onload = ()=>{
+    canvas.width = img.width;
+    canvas.height = img.height;
+    // 底层涂黑
+    ctx.fillStyle="#000";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    // 正常绘制原图
+    ctx.drawImage(img,0,0);
+  }
+  img.src = imgSrc;
+}
 
 // 全局角色卡读写
 function getGlobalCards(){
@@ -202,7 +232,7 @@ function saveBlockList(list){
   localStorage.setItem(BLOCK_KEY,JSON.stringify(list))
 }
 
-// 过滤当前用户屏蔽内容
+// 过滤屏蔽
 function getFilteredCards(){
   let all = getGlobalCards();
   let block = getBlockList();
@@ -282,11 +312,11 @@ function switchPage(type){
   }
 }
 
-// 发布弹窗开关
+// 发布弹窗
 function openUploadModal(){loadDraft();document.getElementById('uploadModal').classList.remove('hidden')}
 function closeUploadModal(){autoSaveDraft();document.getElementById("uploadModal").classList.add("hidden")}
 
-// 图片预览草稿
+// 上传预览
 document.getElementById("imgUpload").addEventListener("change",e=>{
   let f=e.target.files[0];if(!f)return;
   let r=new FileReader();
@@ -300,7 +330,7 @@ document.getElementById("imgUpload").addEventListener("change",e=>{
 })
 document.getElementById('descInput').addEventListener('input', autoSaveDraft);
 
-// 【全局发布核心】发布后所有用户首页实时可见
+// 发布
 function publishCard(){
   let desc = document.getElementById("descInput").value.trim();
   let cateEle = document.querySelector('input[name="cate"]:checked');
@@ -320,7 +350,6 @@ function publishCard(){
   let user = getUserInfo();
   let globalData = getGlobalCards();
 
-  // 携带作者信息，存入全局共享库
   let newItem = {
     img: tempImg,
     desc: desc,
@@ -338,7 +367,7 @@ function publishCard(){
   renderHomeCards();
 }
 
-// 首页渲染：加载全局共享 + 过滤个人屏蔽
+// 首页渲染
 function renderHomeCards(){
   let all = getFilteredCards();
   let list = all[nowTab]||[];
@@ -349,17 +378,27 @@ function renderHomeCards(){
     div.className="bg-white rounded-xl overflow-hidden shadow-sm card-hover cursor-pointer";
     div.onclick=()=>openDetail(item);
     div.innerHTML=`
-      <img src="${item.img}" class="w-full h-52 object-cover">
+      <canvas class="w-full h-52"></canvas>
       <div class="p-3">
         <p class="text-sm text-slate-700 line-clamp-2">${item.desc}</p>
         <p class="text-xs text-slate-400 mt-1">by ${item.author}</p>
       </div>
     `;
     wrap.appendChild(div);
+    // 每个卡片画布涂黑保护
+    const c = div.querySelector('canvas');
+    const cx = c.getContext('2d');
+    const img = new Image();
+    img.src = item.img;
+    img.onload=()=>{
+      c.width=img.width;c.height=img.height;
+      cx.fillStyle="#000";cx.fillRect(0,0,c.width,c.height);
+      cx.drawImage(img,0,0);
+    }
   })
 }
 
-// 个人页面：只显示自己发布的卡片
+// 个人页
 function renderUserPage(){
   let me = getUserInfo();
   let allGlobal = getGlobalCards();
@@ -377,19 +416,26 @@ function renderUserPage(){
     let d=document.createElement('div');
     d.className="bg-white rounded-xl shadow-sm overflow-hidden cursor-pointer";
     d.onclick=()=>openDetail(item);
-    d.innerHTML=`<img src="${item.img}" class="w-full h-40 object-cover">`;
+    d.innerHTML=`<canvas class="w-full h-40"></canvas>`;
     wrap.appendChild(d);
+    const c = d.querySelector('canvas');
+    const cx = c.getContext('2d');
+    const img=new Image();
+    img.src=item.img;
+    img.onload=()=>{
+      c.width=img.width;c.height=img.height;
+      cx.fillStyle="#000";cx.fillRect(0,0,c.width,c.height);
+      cx.drawImage(img,0,0);
+    }
   })
 }
 
-// 详情弹窗
+// 打开详情 使用防截图画布
 function openDetail(item){
   currentCard=item;
   let me = getUserInfo();
-  // 不是自己的卡片隐藏删除按钮
   document.getElementById("delBtn").style.display = (item.authorId === me.name) ? "block":"none";
-
-  document.getElementById("modalImg").src=item.img;
+  drawProtectImage(item.img);
   document.getElementById("modalDesc").innerText=item.desc;
   document.getElementById("detailCate").innerText=item.category+" · by "+item.author;
   document.getElementById("detailModal").classList.remove('hidden')
@@ -399,7 +445,7 @@ function closeDetailModal(){
   currentCard=null;
 }
 
-// 删除：仅自己能删除自己发布，全局同步删除
+// 删除
 function confirmDelete(){
   if(!currentCard)return;
   if(!confirm("确定删除你的角色卡？全局同步删除"))return;
@@ -426,7 +472,7 @@ function confirmBlockAuthor(){
   if(!currentCard)return;
   let b=getBlockList();
   if(b.authors.includes(currentCard.authorId))return;
-  b.authors.push(currentCard.authorId);
+  b.authors.push(currentCard.id);
   saveBlockList(b);
   closeDetailModal();
   renderHomeCards();
