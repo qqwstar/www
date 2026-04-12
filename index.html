@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>角色卡画廊</title>
+<title>角色卡画廊 | 删/屏蔽/分区</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css"/>
 <script>
@@ -24,176 +24,411 @@ body{background:#0f0f1b;}
 .page.active{display:block;}
 .card-hover{transition:0.3s ease;}
 .card-hover:hover{transform:translateY(-6px);box-shadow:0 10px 30px #a855f733;}
-/* 底部中间加号凸起 */
 .plus-btn{transform: translateY(-12px);}
+input,textarea{outline:none;}
+.tab-active{background:#a855f7;color:#fff;}
+#refreshTip{transition:0.3s;}
 </style>
 </head>
-<body class="text-white pb-24">
+<body class="text-white pb-24 overflow-x-hidden">
 
-<!-- 画廊首页(默认进入) -->
+<!-- 首页 -->
 <div id="homePage" class="page active">
   <header class="py-6 text-center">
     <h1 class="text-3xl font-bold text-fuchsia-400">角色卡画廊</h1>
-    <p class="text-gray-400 mt-1">浏览全部角色</p>
+    <p class="text-gray-400 mt-1">下拉刷新 · 分区浏览 · 删/屏蔽</p>
   </header>
-
+  <div id="refreshTip" class="text-center py-2 text-gray-400 hidden">
+    <i class="fa fa-refresh fa-spin"></i> 刷新中...
+  </div>
+  <div class="flex justify-center gap-2 px-4 mb-6">
+    <button onclick="switchTab('星野')" class="tab px-5 py-2 rounded-full border border-prim tab-active">星野</button>
+    <button onclick="switchTab('mufy')" class="tab px-5 py-2 rounded-full border border-prim">mufy</button>
+    <button onclick="switchTab('kira')" class="tab px-5 py-2 rounded-full border border-prim">kira</button>
+  </div>
   <div class="max-w-6xl mx-auto px-4">
-    <div id="cardGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5">
-      <!--角色卡JS渲染-->
-    </div>
+    <div id="cardGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5"></div>
   </div>
 </div>
 
-<!-- 个人主页 -->
+<!-- 个人页 -->
 <div id="userPage" class="page">
   <div class="max-w-xl mx-auto px-4 pt-10">
     <div class="bg-white/10 rounded-2xl p-6 text-center backdrop-blur">
-      <div class="w-24 h-24 rounded-full bg-fuchsia-500 mx-auto flex items-center justify-center text-4xl">
-        <i class="fa fa-user"></i>
+      <div class="relative inline-block">
+        <img id="userAvatar" class="w-24 h-24 rounded-full object-cover mx-auto border-2 border-fuchsia-500">
+        <label class="absolute bottom-0 right-0 bg-fuchsia-500 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer">
+          <i class="fa fa-camera text-sm"></i>
+          <input type="file" accept="image/*" class="hidden" onchange="changeAvatar(event)">
+        </label>
       </div>
-      <h2 class="text-2xl mt-4 font-bold">我的主页</h2>
-      <p class="text-gray-300 mt-2">已上传角色：<span id="cardCount">0</span></p>
+      <input id="userName" type="text" placeholder="输入昵称"
+      class="mt-4 bg-transparent text-2xl font-bold text-center border-b border-white/20 w-4/5 focus:border-fuchsia-400"
+      onblur="saveUserInfo()">
+      <textarea id="userBio" rows="3" placeholder="写下你的个人简介..."
+      class="mt-4 w-full bg-white/10 rounded-lg p-3 resize-none"
+      onblur="saveUserInfo()"></textarea>
+      <p class="text-gray-300 mt-4">已上传：<span id="cardCount">0</span>｜屏蔽：<span id="blockCount">0</span></p>
+      <button onclick="openBlockList()" class="mt-3 bg-red-500 px-4 py-1 rounded-lg text-sm">查看屏蔽列表</button>
     </div>
-    <h3 class="mt-8 text-xl">我的合集</h3>
-    <div id="myCardGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4">
-    </div>
+    <h3 class="mt-8 text-xl">我的角色</h3>
+    <div id="myCardGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4"></div>
   </div>
 </div>
 
-<!-- 底部导航 【首页 | 中间+ | 我的】 -->
-<div class="fixed bottom-0 left-0 w-full bg-gray-900 border-t border-gray-700 flex items-center justify-around py-2 z-40">
+<!-- 屏蔽列表弹窗 -->
+<div id="blockModal" class="fixed inset-0 bg-black/90 z-50 hidden p-5 overflow-auto">
+  <div class="max-w-md mx-auto bg-gray-900 rounded-2xl p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-bold">屏蔽管理</h2>
+      <button onclick="closeBlockList()" class="text-2xl"><i class="fa fa-times"></i></button>
+    </div>
+    <div id="blockList" class="space-y-3"></div>
+  </div>
+</div>
+
+<!-- 底部导航 -->
+<div class="fixed bottom-0 left-0 w-full bg-gray-900 border-t border-prim/30 flex items-center justify-around py-2 z-40">
   <button onclick="switchPage('home')" class="flex-1 py-3 text-center">
-    <i class="fa fa-th-large block text-xl"></i>
-    <span class="text-sm">首页</span>
+    <i class="fa fa-th-large block text-xl"></i><span class="text-sm">首页</span>
   </button>
-  <!-- 中间凸起加号 打开上传弹窗 -->
   <button onclick="openUploadModal()" class="plus-btn w-14 h-14 rounded-full bg-fuchsia-500 flex items-center justify-center text-2xl">
     <i class="fa fa-plus"></i>
   </button>
   <button onclick="switchPage('user')" class="flex-1 py-3 text-center">
-    <i class="fa fa-user block text-xl"></i>
-    <span class="text-sm">我的</span>
+    <i class="fa fa-user block text-xl"></i><span class="text-sm">我的</span>
   </button>
 </div>
 
 <!-- 上传弹窗 -->
 <div id="uploadModal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
   <div class="bg-gray-900 w-full max-w-md rounded-2xl p-6">
-    <h2 class="text-xl mb-4 font-bold">上传新角色卡</h2>
+    <h2 class="text-xl mb-2 font-bold">新建角色卡</h2>
+    <p class="text-xs text-gray-400 mb-3">自动存草稿</p>
+    <div class="flex gap-2 mb-4">
+      <label class="text-sm"><input name="cate" type="radio" value="星野" checked>星野</label>
+      <label class="text-sm"><input name="cate" type="radio" value="mufy">mufy</label>
+      <label class="text-sm"><input name="cate" type="radio" value="kira">kira</label>
+    </div>
     <input type="file" id="imgUpload" accept="image/*" class="w-full bg-gray-800 rounded-lg p-3 mb-3">
-    <textarea id="descInput" rows="4" class="w-full bg-gray-800 rounded-lg p-3 resize-none rounded-lg outline-none" placeholder="角色简介..."></textarea>
+    <div id="draftPreview" class="hidden mb-3">
+      <img id="draftImg" class="w-32 h-32 object-cover rounded-lg">
+    </div>
+    <textarea id="descInput" rows="4" class="w-full bg-gray-800 rounded-lg p-3 resize-none" placeholder="角色简介..."></textarea>
     <div class="mt-5 flex gap-3">
-      <button onclick="closeUploadModal()" class="flex-1 bg-gray-700 py-2 rounded-lg">取消</button>
-      <button onclick="addCard()" class="flex-1 bg-fuchsia-500 py-2 rounded-lg">提交</button>
+      <button onclick="clearDraft()" class="bg-red-500 flex-1 py-2 rounded-lg">清空草稿</button>
+      <button onclick="addCard()" class="flex-1 bg-fuchsia-500 py-2 rounded-lg">发布</button>
     </div>
   </div>
 </div>
 
-<!-- 角色详情弹窗 -->
-<div id="detailModal" class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-4">
-  <div class="max-w-lg w-full">
-    <button onclick="closeDetailModal()" class="float-right text-3xl mb-4"><i class="fa fa-times"></i></button>
-    <img id="modalImg" class="w-full max-h-[70vh] object-contain rounded-xl">
-    <p id="modalDesc" class="mt-5 text-gray-300 whitespace-pre-wrap"></p>
+<!-- 详情弹窗（含删除/屏蔽） -->
+<div id="detailModal" class="fixed inset-0 bg-black/90 z-50 hidden p-5 overflow-auto">
+  <button onclick="closeDetailModal()" class="float-right text-3xl mb-4"><i class="fa fa-times"></i></button>
+  <div class="max-w-lg w-full mx-auto">
+    <img id="modalImg" class="w-full max-h-[60vh] object-contain rounded-xl">
+    <p class="text-gray-400 text-sm mt-2">分区：<span id="detailCate"></span></p>
+    <p id="modalDesc" class="mt-3 text-gray-300 whitespace-pre-wrap"></p>
+    <div class="mt-6 flex gap-3">
+      <button id="deleteBtn" onclick="confirmDelete()" class="flex-1 bg-red-600 py-3 rounded-lg">
+        <i class="fa fa-trash mr-1"></i> 删除此卡
+      </button>
+      <button id="blockBtn" onclick="confirmBlockCard()" class="flex-1 bg-orange-500 py-3 rounded-lg">
+        <i class="fa fa-ban mr-1"></i> 屏蔽此卡
+      </button>
+      <button id="blockAuthorBtn" onclick="confirmBlockAuthor()" class="flex-1 bg-pink-600 py-3 rounded-lg">
+        <i class="fa fa-user-times mr-1"></i> 屏蔽作者
+      </button>
+    </div>
   </div>
 </div>
 
 <script>
 let tempImg = "";
+let nowTab = "星野";
+let currentCard = null;
 
-// 本地存储
-function getCards(){
-  return JSON.parse(localStorage.getItem("roleCards"))||[];
-}
-function saveCards(arr){
-  localStorage.setItem("roleCards",JSON.stringify(arr));
-}
-
-//页面切换
-function switchPage(type){
-  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
-  if(type==='home') renderHomeCards(), document.getElementById('homePage').classList.add('active');
-  if(type==='user') renderUserPage(), document.getElementById('userPage').classList.add('active');
-}
-
-//上传弹窗控制
-function openUploadModal(){
-  document.getElementById('uploadModal').classList.remove('hidden');
-}
-function closeUploadModal(){
-  document.getElementById('uploadModal').classList.add('hidden');
-  tempImg = "";
-  document.getElementById("imgUpload").value="";
-  document.getElementById("descInput").value="";
-}
-
-//图片读取
-document.getElementById("imgUpload").addEventListener("change",e=>{
-  let f = e.target.files[0];
-  if(!f)return;
-  let r = new FileReader();
-  r.onload = ev => tempImg = ev.target.result;
-  r.readAsDataURL(f);
+// 下拉刷新
+let startY=0;
+document.addEventListener('touchstart',e=>{startY=e.touches[0].clientY})
+document.addEventListener('touchmove',e=>{
+  let moveY=e.touches[0].clientY;
+  if(window.scrollY<=0 && moveY-startY>60){
+    document.getElementById('refreshTip').classList.remove('hidden')
+  }
+})
+document.addEventListener('touchend',()=>{
+  if(window.scrollY<=0){
+    setTimeout(()=>{
+      renderHomeCards();
+      document.getElementById('refreshTip').classList.add('hidden')
+    },600)
+  }
 })
 
-//新增角色
-function addCard(){
-  let desc = document.getElementById("descInput").value.trim();
-  if(!tempImg) return alert("请选择角色图片");
-  if(!desc) return alert("请填写简介");
-  let list = getCards();
-  list.push({img:tempImg, desc:desc, id:Date.now()});
-  saveCards(list);
-  closeUploadModal();
-  renderHomeCards();
+// 屏蔽/删除 存储
+function getBlockList(){
+  return JSON.parse(localStorage.getItem("blockList"))||{cards:[],authors:[]}
+}
+function saveBlockList(list){
+  localStorage.setItem("blockList",JSON.stringify(list))
 }
 
-//首页画廊渲染
+// 分区切换
+function switchTab(name){
+  nowTab=name;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('tab-active'))
+  event.target.classList.add('tab-active')
+  renderHomeCards()
+}
+
+// 草稿
+function getDraft(){return JSON.parse(localStorage.getItem("cardDraft"))||{img:"",desc:""}}
+function autoSaveDraft(){
+  let d={img:tempImg,desc:document.getElementById("descInput").value}
+  localStorage.setItem("cardDraft",JSON.stringify(d))
+}
+function loadDraft(){
+  let d=getDraft();
+  tempImg=d.img;
+  document.getElementById("descInput").value=d.desc;
+  if(d.img){
+    document.getElementById("draftImg").src=d.img;
+    document.getElementById("draftPreview").classList.remove("hidden")
+  }
+}
+function clearDraft(){
+  localStorage.removeItem("cardDraft");
+  tempImg="";
+  document.getElementById("imgUpload").value="";
+  document.getElementById("descInput").value="";
+  document.getElementById("draftPreview").classList.add("hidden")
+}
+
+// 用户资料
+function getUserInfo(){return JSON.parse(localStorage.getItem("userProfile"))||{avatar:"",name:"匿名",bio:"暂无简介"}}
+function saveUserInfo(){
+  let u=getUserInfo();
+  u.name=document.getElementById("userName").value;
+  u.bio=document.getElementById("userBio").value;
+  localStorage.setItem("userProfile",JSON.stringify(u))
+}
+function changeAvatar(e){
+  let f=e.target.files[0];if(!f)return;
+  let r=new FileReader();
+  r.onload=res=>{
+    let u=getUserInfo();u.avatar=res.target.result;
+    localStorage.setItem("userProfile",JSON.stringify(u));
+    document.getElementById("userAvatar").src=res.target.result
+  }
+  r.readAsDataURL(f)
+}
+function loadUserProfile(){
+  let u=getUserInfo();
+  document.getElementById("userAvatar").src=u.avatar||"https://api.dicebear.com/7.x/adventurer/svg?seed=user";
+  document.getElementById("userName").value=u.name;
+  document.getElementById("userBio").value=u.bio
+}
+
+// 角色卡数据（带作者ID）
+function getCards(){
+  let all=JSON.parse(localStorage.getItem("allCards"))||{"星野":[],"mufy":[],"kira":[]};
+  let block=getBlockList();
+  Object.keys(all).forEach(cate=>{
+    all[cate]=all[cate].filter(c=>!block.cards.includes(c.id)&&!block.authors.includes(c.authorId))
+  })
+  return all
+}
+function saveCards(obj){localStorage.setItem("allCards",JSON.stringify(obj))}
+
+// 页面切换
+function switchPage(type){
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'))
+  if(type==='home'){
+    document.getElementById('homePage').classList.add('active');
+    renderHomeCards()
+  }
+  if(type==='user'){
+    document.getElementById('userPage').classList.add('active');
+    loadUserProfile();
+    renderUserPage()
+  }
+}
+
+// 上传弹窗
+function openUploadModal(){loadDraft();document.getElementById('uploadModal').classList.remove('hidden')}
+function closeUploadModal(){autoSaveDraft();document.getElementById("uploadModal").classList.add("hidden")}
+
+document.getElementById("imgUpload").addEventListener("change",e=>{
+  let f=e.target.files[0];if(!f)return;
+  let r=new FileReader();
+  r.onload=ev=>{
+    tempImg=ev.target.result;
+    document.getElementById("draftImg").src=tempImg;
+    document.getElementById("draftPreview").classList.remove("hidden");
+    autoSaveDraft()
+  }
+  r.readAsDataURL(f)
+})
+document.getElementById('descInput').addEventListener('input',autoSaveDraft)
+
+// 发布
+function addCard(){
+  let desc=document.getElementById("descInput").value.trim();
+  let cate=document.querySelector('input[name="cate"]:checked').value;
+  if(!tempImg)return alert("上传图片");
+  if(!desc)return alert("填写简介");
+  let all=getCards();
+  let user=getUserInfo();
+  let card={
+    img:tempImg,desc:desc,category:cate,
+    id:Date.now(),authorId:user.name||"匿名",author:user.name
+  };
+  all[cate].push(card);
+  saveCards(all);
+  clearDraft();
+  closeUploadModal();
+  renderHomeCards()
+}
+
+// 首页渲染
 function renderHomeCards(){
-  let list = getCards();
-  let wrap = document.getElementById("cardGrid");
+  let all=getCards();
+  let list=all[nowTab]||[];
+  let wrap=document.getElementById("cardGrid");
   wrap.innerHTML="";
   list.forEach(item=>{
-    let div = document.createElement('div');
-    div.className = "bg-gray-800 rounded-xl overflow-hidden card-hover cursor-pointer";
-    div.onclick = ()=>openDetail(item.img, item.desc);
+    let div=document.createElement('div');
+    div.className="bg-gray-800 rounded-xl overflow-hidden card-hover cursor-pointer";
+    div.onclick=()=>openDetail(item);
     div.innerHTML=`
       <img src="${item.img}" class="w-full h-52 object-cover">
       <div class="p-3">
         <p class="text-sm text-gray-300 line-clamp-2">${item.desc}</p>
+        <p class="text-xs text-gray-500 mt-1">by ${item.author}</p>
       </div>
     `;
-    wrap.appendChild(div);
+    wrap.appendChild(div)
   })
 }
 
-//个人页渲染
+// 个人页
 function renderUserPage(){
-  let list = getCards();
-  document.getElementById("cardCount").innerText = list.length;
-  let wrap = document.getElementById("myCardGrid");
+  let all=JSON.parse(localStorage.getItem("allCards"))||{"星野":[],"mufy":[],"kira":[]};
+  let total=[...all.星野,...all.mufy,...all.kira];
+  let block=getBlockList();
+  document.getElementById("cardCount").innerText=total.length;
+  document.getElementById("blockCount").innerText=block.cards.length+block.authors.length;
+  let wrap=document.getElementById("myCardGrid");
   wrap.innerHTML="";
-  list.forEach(item=>{
-    let d = document.createElement('div');
+  total.forEach(item=>{
+    let d=document.createElement('div');
     d.className="bg-gray-800 rounded-xl overflow-hidden cursor-pointer";
-    d.onclick=()=>openDetail(item.img,item.desc);
-    d.innerHTML = `<img src="${item.img}" class="w-full h-40 object-cover">`;
-    wrap.appendChild(d);
+    d.onclick=()=>openDetail(item);
+    d.innerHTML=`<img src="${item.img}" class="w-full h-40 object-cover">`;
+    wrap.appendChild(d)
   })
 }
 
-//详情弹窗
-function openDetail(img,txt){
-  document.getElementById("modalImg").src=img;
-  document.getElementById("modalDesc").innerText=txt;
-  document.getElementById("detailModal").classList.remove('hidden');
+// 详情
+function openDetail(item){
+  currentCard=item;
+  document.getElementById("modalImg").src=item.img;
+  document.getElementById("modalDesc").innerText=item.desc;
+  document.getElementById("detailCate").innerText=item.category+" · by "+item.author;
+  document.getElementById("detailModal").classList.remove('hidden')
 }
 function closeDetailModal(){
   document.getElementById("detailModal").classList.add('hidden');
+  currentCard=null
 }
 
-//默认加载画廊首页
-window.onload = renderHomeCards();
+// 删除卡片
+function confirmDelete(){
+  if(!currentCard)return;
+  if(!confirm("确定删除此角色卡？不可恢复"))return;
+  let all=JSON.parse(localStorage.getItem("allCards"))||{"星野":[],"mufy":[],"kira":[]};
+  let cate=currentCard.category;
+  all[cate]=all[cate].filter(c=>c.id!==currentCard.id);
+  saveCards(all);
+  closeDetailModal();
+  renderHomeCards();
+  renderUserPage()
+}
+
+// 屏蔽卡片
+function confirmBlockCard(){
+  if(!currentCard)return;
+  if(!confirm("屏蔽此角色卡？"))return;
+  let b=getBlockList();
+  if(!b.cards.includes(currentCard.id)){
+    b.cards.push(currentCard.id);
+    saveBlockList(b);
+    closeDetailModal();
+    renderHomeCards()
+  }
+}
+
+// 屏蔽作者
+function confirmBlockAuthor(){
+  if(!currentCard)return;
+  if(!confirm("屏蔽作者："+currentCard.author+"？"))return;
+  let b=getBlockList();
+  if(!b.authors.includes(currentCard.authorId)){
+    b.authors.push(currentCard.authorId);
+    saveBlockList(b);
+    closeDetailModal();
+    renderHomeCards()
+  }
+}
+
+// 屏蔽列表
+function openBlockList(){
+  let b=getBlockList();
+  let el=document.getElementById("blockList");
+  el.innerHTML="";
+  if(b.cards.length==0&&b.authors.length==0){
+    el.innerHTML="<p class='text-gray-400 text-center py-4'>暂无屏蔽</p>";
+    document.getElementById("blockModal").classList.remove("hidden");
+    return
+  }
+  b.cards.forEach(id=>{
+    let d=document.createElement("div");
+    d.className="p-3 bg-gray-800 rounded-lg flex justify-between items-center";
+    d.innerHTML=`
+      <span>卡片ID: ${id}</span>
+      <button onclick="unblockCard(${id})" class="text-green-400">取消</button>
+    `;
+    el.appendChild(d)
+  })
+  b.authors.forEach(name=>{
+    let d=document.createElement("div");
+    d.className="p-3 bg-gray-800 rounded-lg flex justify-between items-center";
+    d.innerHTML=`
+      <span>作者: ${name}</span>
+      <button onclick="unblockAuthor('${name}')" class="text-green-400">取消</button>
+    `;
+    el.appendChild(d)
+  })
+  document.getElementById("blockModal").classList.remove("hidden")
+}
+function closeBlockList(){document.getElementById("blockModal").classList.add("hidden")}
+function unblockCard(id){
+  let b=getBlockList();
+  b.cards=b.cards.filter(c=>c!==id);
+  saveBlockList(b);
+  openBlockList();
+  renderHomeCards()
+}
+function unblockAuthor(name){
+  let b=getBlockList();
+  b.authors=b.authors.filter(a=>a!==name);
+  saveBlockList(b);
+  openBlockList();
+  renderHomeCards()
+}
+
+window.onload=renderHomeCards
 </script>
 </body>
 </html>
