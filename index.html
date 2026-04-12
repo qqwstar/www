@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>角色卡画廊</title>
+<title>角色卡画廊 | 全局共享</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font.min.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/font-awesome@4.7.0/css/font-awesome.min.css"/>
 <script>
 tailwind.config={
   theme:{
@@ -25,9 +25,10 @@ body{background:#f1f5f9;}
 .page.active{display:block;}
 .card-hover{transition:0.3s ease;}
 .card-hover:hover{transform:translateY(-6px);box-shadow:0 10px 25px #3b82f638;}
-.btn-interactive{transition: all 0.2s ease; active:scale(0.95);}
+.btn-interactive{transition: all 0.2s ease;}
 .btn-interactive:hover{opacity:0.9;}
 .btn-interactive:active{transform:scale(0.95);}
+/* 底部中间加号永久保留动画 */
 .plus-btn{transform: translateY(-12px);transition:0.2s;}
 .plus-btn:active{transform:translateY(-12px) scale(0.95);}
 input,textarea{outline:none;}
@@ -43,10 +44,10 @@ input,textarea{outline:none;}
 <div id="homePage" class="page active">
   <header class="py-6 text-center">
     <h1 class="text-3xl font-bold text-mainBlue">角色卡画廊</h1>
-    <p class="text-slate-500 mt-1">下拉刷新 · 分区浏览 · 删除/屏蔽</p>
+    <p class="text-slate-500 mt-1">下拉刷新 · 全局共享 · 分区浏览</p>
   </header>
   <div id="refreshTip" class="text-center py-2 text-mainBlue hidden">
-    <i class="fa fa-refresh fa-spin"></i> 刷新中...
+    <i class="fa fa-refresh fa-spin"></i> 同步最新内容中...
   </div>
   <div class="flex justify-center gap-2 px-4 mb-6">
     <button onclick="switchTab('星野')" class="tab px-5 py-2 rounded-full border border-mainBlue tab-active">星野</button>
@@ -75,10 +76,10 @@ input,textarea{outline:none;}
       <textarea id="userBio" rows="3" placeholder="写下你的个人简介..."
       class="mt-4 w-full bg-slate-100 rounded-lg p-3 resize-none"
       onblur="saveUserInfo()"></textarea>
-      <p class="text-slate-600 mt-4">已上传：<span id="cardCount">0</span>｜屏蔽：<span id="blockCount">0</span></p>
+      <p class="text-slate-600 mt-4">我的发布：<span id="myCardCount">0</span>｜个人屏蔽：<span id="blockCount">0</span></p>
       <button onclick="openBlockList()" class="btn-interactive mt-3 bg-mainBlue px-4 py-1 rounded-lg text-white text-sm">查看屏蔽列表</button>
     </div>
-    <h3 class="mt-8 text-xl text-slate-700">我的角色</h3>
+    <h3 class="mt-8 text-xl text-slate-700">我的发布</h3>
     <div id="myCardGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4"></div>
   </div>
 </div>
@@ -87,7 +88,7 @@ input,textarea{outline:none;}
 <div id="blockModal" class="fixed inset-0 bg-black/60 z-50 hidden p-5 overflow-auto">
   <div class="max-w-md mx-auto bg-white rounded-2xl p-6">
     <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-bold text-slate-700">屏蔽管理</h2>
+      <h2 class="text-xl font-bold text-slate-700">个人屏蔽管理</h2>
       <button onclick="closeBlockList()" class="btn-interactive text-2xl text-slate-500"><i class="fa fa-times"></i></button>
     </div>
     <div id="blockList" class="space-y-3"></div>
@@ -107,11 +108,11 @@ input,textarea{outline:none;}
   </button>
 </div>
 
-<!-- 上传弹窗｜返回、清空、发布全部可交互 -->
+<!-- 发布弹窗｜草稿保留、返回按钮、全局同步发布 -->
 <div id="uploadModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
   <div class="bg-white w-full max-w-md rounded-2xl p-6">
-    <h2 class="text-xl mb-2 font-bold text-slate-700">新建角色卡</h2>
-    <p class="text-xs text-slate-500 mb-3">内容自动保存为草稿</p>
+    <h2 class="text-xl mb-2 font-bold text-slate-700">发布全局角色卡</h2>
+    <p class="text-xs text-slate-500 mb-3">草稿自动保存 · 发布所有人可见</p>
     <div class="flex gap-2 mb-4">
       <label class="text-sm text-slate-600"><input name="cate" type="radio" value="星野" checked class="mr-1">星野</label>
       <label class="text-sm text-slate-600"><input name="cate" type="radio" value="mufy" class="mr-1">mufy</label>
@@ -125,7 +126,7 @@ input,textarea{outline:none;}
     <div class="mt-5 flex gap-3">
       <button onclick="closeUploadModal()" class="btn-interactive flex-1 bg-slate-400 text-white py-2 rounded-lg">返回</button>
       <button onclick="clearDraft()" class="btn-interactive flex-1 bg-red-500 text-white py-2 rounded-lg">清空草稿</button>
-      <button onclick="addCard()" class="btn-interactive flex-1 bg-mainBlue text-white py-2 rounded-lg">发布</button>
+      <button onclick="publishCard()" class="btn-interactive flex-1 bg-mainBlue text-white py-2 rounded-lg">发布</button>
     </div>
   </div>
 </div>
@@ -138,8 +139,8 @@ input,textarea{outline:none;}
     <p class="text-slate-200 text-sm mt-2">分区：<span id="detailCate"></span></p>
     <p id="modalDesc" class="mt-3 text-white whitespace-pre-wrap"></p>
     <div class="mt-6 flex gap-3">
-      <button onclick="confirmDelete()" class="btn-interactive flex-1 bg-red-600 text-white py-3 rounded-lg">
-        <i class="fa fa-trash mr-1"></i> 删除
+      <button id="delBtn" onclick="confirmDelete()" class="btn-interactive flex-1 bg-red-600 text-white py-3 rounded-lg">
+        <i class="fa fa-trash mr-1"></i> 删除我的卡片
       </button>
       <button onclick="confirmBlockCard()" class="btn-interactive flex-1 bg-orange-500 text-white py-3 rounded-lg">
         <i class="fa fa-ban mr-1"></i> 屏蔽卡片
@@ -156,7 +157,16 @@ let tempImg = "";
 let nowTab = "星野";
 let currentCard = null;
 
-// 下拉刷新
+// 全局共用角色卡存储（所有用户共享）
+const GLOBAL_CARD_KEY = "globalAllCards";
+// 个人屏蔽存储（独立互不影响）
+const BLOCK_KEY = "userBlockList";
+// 个人草稿
+const DRAFT_KEY = "cardDraft";
+// 个人资料
+const USER_KEY = "userProfile";
+
+// 下拉刷新 同步全局最新
 let startY=0;
 document.addEventListener('touchstart',e=>{startY=e.touches[0].clientY})
 document.addEventListener('touchmove',e=>{
@@ -174,12 +184,32 @@ document.addEventListener('touchend',()=>{
   }
 })
 
-// 屏蔽存储
+// 全局角色卡读写
+function getGlobalCards(){
+  let data = localStorage.getItem(GLOBAL_CARD_KEY);
+  if(!data) return {"星野":[],"mufy":[],"kira":[]};
+  return JSON.parse(data);
+}
+function saveGlobalCards(obj){
+  localStorage.setItem(GLOBAL_CARD_KEY, JSON.stringify(obj));
+}
+
+// 个人屏蔽
 function getBlockList(){
-  return JSON.parse(localStorage.getItem("blockList"))||{cards:[],authors:[]}
+  return JSON.parse(localStorage.getItem(BLOCK_KEY))||{cards:[],authors:[]}
 }
 function saveBlockList(list){
-  localStorage.setItem("blockList",JSON.stringify(list))
+  localStorage.setItem(BLOCK_KEY,JSON.stringify(list))
+}
+
+// 过滤当前用户屏蔽内容
+function getFilteredCards(){
+  let all = getGlobalCards();
+  let block = getBlockList();
+  Object.keys(all).forEach(cate=>{
+    all[cate] = all[cate].filter(c=>!block.cards.includes(c.id) && !block.authors.includes(c.authorId))
+  })
+  return all;
 }
 
 // 分区切换
@@ -191,10 +221,10 @@ function switchTab(name){
 }
 
 // 草稿
-function getDraft(){return JSON.parse(localStorage.getItem("cardDraft"))||{img:"",desc:""}}
+function getDraft(){return JSON.parse(localStorage.getItem(DRAFT_KEY))||{img:"",desc:""}}
 function autoSaveDraft(){
   let d={img:tempImg,desc:document.getElementById("descInput").value}
-  localStorage.setItem("cardDraft",JSON.stringify(d))
+  localStorage.setItem(DRAFT_KEY,JSON.stringify(d))
 }
 function loadDraft(){
   let d=getDraft();
@@ -206,7 +236,7 @@ function loadDraft(){
   }
 }
 function clearDraft(){
-  localStorage.removeItem("cardDraft");
+  localStorage.removeItem(DRAFT_KEY);
   tempImg="";
   document.getElementById("imgUpload").value="";
   document.getElementById("descInput").value="";
@@ -214,19 +244,19 @@ function clearDraft(){
 }
 
 // 用户资料
-function getUserInfo(){return JSON.parse(localStorage.getItem("userProfile"))||{avatar:"",name:"匿名",bio:"暂无简介"}}
+function getUserInfo(){return JSON.parse(localStorage.getItem(USER_KEY))||{avatar:"",name:"匿名",bio:"暂无简介"}}
 function saveUserInfo(){
   let u=getUserInfo();
   u.name=document.getElementById("userName").value;
   u.bio=document.getElementById("userBio").value;
-  localStorage.setItem("userProfile",JSON.stringify(u));
+  localStorage.setItem(USER_KEY,JSON.stringify(u));
 }
 function changeAvatar(e){
   let f=e.target.files[0];if(!f)return;
   let r=new FileReader();
   r.onload=res=>{
     let u=getUserInfo();u.avatar=res.target.result;
-    localStorage.setItem("userProfile",JSON.stringify(u));
+    localStorage.setItem(USER_KEY,JSON.stringify(u));
     document.getElementById("userAvatar").src=res.target.result
   }
   r.readAsDataURL(f)
@@ -237,17 +267,6 @@ function loadUserProfile(){
   document.getElementById("userName").value=u.name;
   document.getElementById("userBio").value=u.bio;
 }
-
-// 角色卡数据
-function getCards(){
-  let all=JSON.parse(localStorage.getItem("allCards"))||{"星野":[],"mufy":[],"kira":[]};
-  let block=getBlockList();
-  Object.keys(all).forEach(cate=>{
-    all[cate]=all[cate].filter(c=>!block.cards.includes(c.id)&&!block.authors.includes(c.authorId))
-  })
-  return all
-}
-function saveCards(obj){localStorage.setItem("allCards",JSON.stringify(obj))}
 
 // 页面切换
 function switchPage(type){
@@ -263,58 +282,67 @@ function switchPage(type){
   }
 }
 
-// 上传弹窗开关
+// 发布弹窗开关
 function openUploadModal(){loadDraft();document.getElementById('uploadModal').classList.remove('hidden')}
 function closeUploadModal(){autoSaveDraft();document.getElementById("uploadModal").classList.add("hidden")}
 
-// 上传图片预览+草稿
+// 图片预览草稿
 document.getElementById("imgUpload").addEventListener("change",e=>{
   let f=e.target.files[0];if(!f)return;
   let r=new FileReader();
   r.onload=ev=>{
-    tempImg=ev.target.result;
-    document.getElementById("draftImg").src=tempImg;
+    tempImg = ev.target.result;
+    document.getElementById("draftImg").src = tempImg;
     document.getElementById("draftPreview").classList.remove("hidden");
     autoSaveDraft();
   }
   r.readAsDataURL(f)
 })
-document.getElementById('descInput').addEventListener('input',autoSaveDraft)
+document.getElementById('descInput').addEventListener('input', autoSaveDraft);
 
-// 【发布按钮核心逻辑 —— 完全正常提交】
-function addCard(){
-  const desc = document.getElementById("descInput").value.trim();
-  const cate = document.querySelector('input[name="cate"]:checked').value;
+// 【全局发布核心】发布后所有用户首页实时可见
+function publishCard(){
+  let desc = document.getElementById("descInput").value.trim();
+  let cateEle = document.querySelector('input[name="cate"]:checked');
   if(!tempImg){
-    alert("请选择角色图片");
+    alert("请先上传角色图片");
     return;
   }
   if(!desc){
     alert("请填写角色简介");
     return;
   }
-  let all = getCards();
+  if(!cateEle){
+    alert("请选择分区");
+    return;
+  }
+  let cate = cateEle.value;
   let user = getUserInfo();
-  let newCard = {
+  let globalData = getGlobalCards();
+
+  // 携带作者信息，存入全局共享库
+  let newItem = {
     img: tempImg,
     desc: desc,
     category: cate,
     id: Date.now(),
-    authorId: user.name || "匿名",
-    author: user.name
+    author: user.name || "匿名用户",
+    authorId: user.name || "匿名用户"
   };
-  all[cate].push(newCard);
-  saveCards(all);
+
+  globalData[cate].push(newItem);
+  saveGlobalCards(globalData);
+
   clearDraft();
   closeUploadModal();
   renderHomeCards();
 }
 
-// 主页渲染
+// 首页渲染：加载全局共享 + 过滤个人屏蔽
 function renderHomeCards(){
-  let all=getCards();
-  let list=all[nowTab]||[];
-  let wrap=document.getElementById("cardGrid");
+  let all = getFilteredCards();
+  let list = all[nowTab]||[];
+  let wrap = document.getElementById("cardGrid");
   wrap.innerHTML="";
   list.forEach(item=>{
     let div=document.createElement('div');
@@ -331,18 +359,23 @@ function renderHomeCards(){
   })
 }
 
-// 个人页渲染
+// 个人页面：只显示自己发布的卡片
 function renderUserPage(){
-  let all=JSON.parse(localStorage.getItem("allCards"))||{"星野":[],"mufy":[],"kira":[]};
-  let total=[...all.星野,...all.mufy,...all.kira];
-  let block=getBlockList();
-  document.getElementById("cardCount").innerText=total.length;
-  document.getElementById("blockCount").innerText=block.cards.length+block.authors.length;
-  let wrap=document.getElementById("myCardGrid");
+  let me = getUserInfo();
+  let allGlobal = getGlobalCards();
+  let myAll = [];
+  Object.values(allGlobal).forEach(arr=>{
+    myAll.push(...arr.filter(x=>x.authorId === me.name))
+  });
+  let block = getBlockList();
+  document.getElementById("myCardCount").innerText = myAll.length;
+  document.getElementById("blockCount").innerText = block.cards.length+block.authors.length;
+
+  let wrap = document.getElementById("myCardGrid");
   wrap.innerHTML="";
-  total.forEach(item=>{
+  myAll.forEach(item=>{
     let d=document.createElement('div');
-    d.className="bg-white rounded-xl overflow-hidden cursor-pointer";
+    d.className="bg-white rounded-xl shadow-sm overflow-hidden cursor-pointer";
     d.onclick=()=>openDetail(item);
     d.innerHTML=`<img src="${item.img}" class="w-full h-40 object-cover">`;
     wrap.appendChild(d);
@@ -352,6 +385,10 @@ function renderUserPage(){
 // 详情弹窗
 function openDetail(item){
   currentCard=item;
+  let me = getUserInfo();
+  // 不是自己的卡片隐藏删除按钮
+  document.getElementById("delBtn").style.display = (item.authorId === me.name) ? "block":"none";
+
   document.getElementById("modalImg").src=item.img;
   document.getElementById("modalDesc").innerText=item.desc;
   document.getElementById("detailCate").innerText=item.category+" · by "+item.author;
@@ -362,17 +399,20 @@ function closeDetailModal(){
   currentCard=null;
 }
 
-// 删除、屏蔽
+// 删除：仅自己能删除自己发布，全局同步删除
 function confirmDelete(){
   if(!currentCard)return;
-  if(!confirm("确定删除？不可恢复"))return;
-  let all=JSON.parse(localStorage.getItem("allCards"));
-  all[currentCard.category] = all[currentCard.category].filter(x=>x.id !== currentCard.id);
-  saveCards(all);
+  if(!confirm("确定删除你的角色卡？全局同步删除"))return;
+  let global = getGlobalCards();
+  global[currentCard.category] = global[currentCard.category].filter(x=>x.id !== currentCard.id);
+  saveGlobalCards(global);
+
   closeDetailModal();
   renderHomeCards();
   renderUserPage();
 }
+
+// 屏蔽
 function confirmBlockCard(){
   if(!currentCard)return;
   let b=getBlockList();
@@ -405,13 +445,13 @@ function openBlockList(){
   b.cards.forEach(id=>{
     let d=document.createElement("div");
     d.className="p-3 bg-slate-100 rounded-lg flex justify-between";
-    d.innerHTML=`<span>卡片ID:${id}</span><button onclick="unblockCard(${id})" class="text-mainBlue">解除</button>`;
+    d.innerHTML=`<span>卡片ID:${id}</span><button onclick="unblockCard(${id})" class="text-mainBlue btn-interactive">解除</button>`;
     el.appendChild(d);
   })
   b.authors.forEach(name=>{
     let d=document.createElement("div");
     d.className="p-3 bg-slate-100 rounded-lg flex justify-between";
-    d.innerHTML=`<span>作者:${name}</span><button onclick="unblockAuthor('${name}')" class="text-mainBlue">解除</button>`;
+    d.innerHTML=`<span>作者:${name}</span><button onclick="unblockAuthor('${name}')" class="text-mainBlue btn-interactive">解除</button>`;
     el.appendChild(d);
   })
   document.getElementById("blockModal").classList.remove("hidden");
