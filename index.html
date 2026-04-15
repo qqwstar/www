@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>海盐蓝高级拼图工坊</title>
+    <title>海盐蓝高级拼图工坊 v4 (带缓存管理)</title>
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <style>
         :root {
@@ -11,6 +11,8 @@
             --deep-sea: #5B8DA5;
             --bg-light: #F0F7FA;
             --white: #FFFFFF;
+            --error-red: #ff7675;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         body {
@@ -20,114 +22,91 @@
             display: flex; justify-content: center;
         }
 
-        /* 竖屏容器 */
         .phone-frame {
-            width: 100%;
-            max-width: 450px;
-            height: 100vh;
-            background: var(--bg-light);
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            box-shadow: 0 0 30px rgba(0,0,0,0.1);
+            width: 100%; max-width: 450px; height: 100vh;
+            background: var(--bg-light); display: flex; flex-direction: column;
+            position: relative; box-shadow: 0 0 30px rgba(0,0,0,0.1);
         }
 
-        /* 顶部控制栏 */
         header {
-            background: var(--white);
-            padding: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid rgba(168, 209, 231, 0.3);
+            background: var(--white); padding: 15px; display: flex;
+            justify-content: space-between; align-items: center;
+            border-bottom: 1px solid rgba(168, 209, 231, 0.3); z-index: 10;
         }
 
-        .logo { color: var(--deep-sea); font-weight: bold; font-size: 1.1rem; }
+        .logo { color: var(--deep-sea); font-weight: bold; }
 
-        /* 图片预览区域 (滚动显示长图) */
-        #preview-scroll-box {
-            flex: 1;
-            overflow-y: auto;
-            background: #E5EFF5;
-            padding: 15px;
-            position: relative; /* 为水印定位 */
-            display: flex;
-            flex-direction: column;
-            gap: 5px; /* 拼图间隙 */
+        .preview-container {
+            flex: 1; overflow-y: auto; background: #E5EFF5;
+            display: flex; justify-content: center; align-items: flex-start;
+            padding: 20px; position: relative;
         }
 
-        .preview-img {
-            width: 100%;
-            display: block;
-            border-radius: 4px;
-            pointer-events: none; /* 防止图片干扰水印拖拽 */
+        #puzzle-canvas {
+            width: 85%; background: var(--white); position: relative;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05); transition: var(--transition);
+            display: flex; flex-direction: column; gap: 2px; min-height: 200px;
         }
 
-        /* 可拖拽水印样式 */
-        #draggable-watermark {
-            position: absolute;
-            z-index: 100;
-            cursor: move;
-            touch-action: none;
-            user-select: none;
-            max-width: 100px;
-            border: 2px dashed rgba(255,255,255,0.5);
-            padding: 2px;
-            display: none; /* 初始隐藏 */
+        #puzzle-canvas.ratio-3-4 { width: 85%; }
+        #puzzle-canvas.ratio-1-1 { width: 95%; aspect-ratio: 1/1; }
+        #puzzle-canvas.ratio-9-16 { width: 65%; }
+
+        .preview-img { width: 100%; display: block; pointer-events: none; }
+
+        /* --- 水印容器 --- */
+        #watermark-container {
+            position: absolute; z-index: 100; display: none;
+            width: 80px; touch-action: none; user-select: none;
+            border: 1px dashed rgba(168, 209, 231, 0.8); box-sizing: border-box;
         }
 
-        /* 底部工具面板 */
+        #draggable-watermark { width: 100%; height: 100%; display: block; pointer-events: none; object-fit: contain; }
+
+        /* 删除按钮 (叉号) */
+        .delete-btn {
+            position: absolute; top: -10px; left: -10px;
+            width: 20px; height: 20px; background: var(--error-red);
+            color: white; border-radius: 50%; text-align: center;
+            line-height: 18px; cursor: pointer; font-size: 14px;
+            font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 102;
+        }
+
+        /* 缩放手柄 */
+        .resize-handle {
+            position: absolute; width: 14px; height: 14px;
+            background-color: var(--deep-sea); border: 2px solid var(--white);
+            border-radius: 50%; right: -7px; bottom: -7px;
+            cursor: nwse-resize; z-index: 101;
+        }
+
+        /* 底部面板 */
         .bottom-panel {
-            background: var(--white);
-            padding: 20px;
-            border-radius: 20px 20px 0 0;
-            box-shadow: 0 -5px 15px rgba(0,0,0,0.05);
+            background: var(--white); padding: 20px;
+            border-radius: 20px 20px 0 0; box-shadow: 0 -5px 15px rgba(0,0,0,0.05);
         }
 
         .control-group { margin-bottom: 15px; }
         .control-label { font-size: 0.8rem; color: #888; margin-bottom: 8px; display: block; }
-
         .btn-row { display: flex; gap: 10px; }
-        .action-btn {
-            background: var(--bg-light);
-            border: 1px solid var(--sea-salt-blue);
-            color: var(--deep-sea);
-            padding: 8px 15px;
-            border-radius: 8px;
-            flex: 1;
-            font-size: 0.9rem;
-            cursor: pointer;
-            text-align: center;
+
+        .opt-btn {
+            background: #f0f0f0; border: 2px solid transparent; color: #666;
+            padding: 8px 12px; border-radius: 10px; font-size: 0.8rem;
+            cursor: pointer; transition: var(--transition); white-space: nowrap; flex: 1; text-align: center;
         }
 
-        /* 价格输入框 */
-        .price-container {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            color: #FF7E5F;
-            font-weight: bold;
-        }
+        .opt-btn.active { background: var(--sea-salt-blue); color: var(--white); border-color: var(--deep-sea); }
+
         .price-input {
-            border: none;
-            border-bottom: 1px dashed #FF7E5F;
-            color: #FF7E5F;
-            font-size: 1.5rem;
-            width: 80px;
-            outline: none;
-            background: transparent;
-            font-weight: bold;
+            border: none; border-bottom: 2px solid #FF7E5F; color: #FF7E5F;
+            font-size: 1.5rem; width: 80px; outline: none; background: transparent; text-align: center;
         }
 
         .save-btn {
-            background: var(--deep-sea);
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 10px;
-            width: 100%;
-            margin-top: 15px;
-            font-size: 1rem;
+            background: var(--deep-sea); color: white; border: none;
+            padding: 12px; border-radius: 12px; width: 120px; font-size: 1rem; cursor: pointer;
         }
     </style>
 </head>
@@ -136,118 +115,159 @@
 <div class="phone-frame">
     <header>
         <div class="logo">海盐拼图 🧳</div>
-        <div style="font-size: 0.8rem; color: var(--deep-sea);">竖屏比例</div>
+        <div id="file-count" style="font-size: 0.7rem; color: var(--deep-sea);">未选图片</div>
     </header>
 
-    <div id="preview-scroll-box">
-        <img id="draggable-watermark" src="" alt="watermark">
-        
-        <div id="placeholder-text" style="margin: auto; color: #A8D1E7;">请上传图片开始拼图</div>
+    <div class="preview-container">
+        <div id="puzzle-canvas" class="ratio-3-4">
+            <div id="watermark-container">
+                <div class="delete-btn" onclick="removeWatermark()">×</div>
+                <img id="draggable-watermark" src="" alt="watermark">
+                <div class="resize-handle"></div>
+            </div>
+            <div id="placeholder" style="margin: auto; color: #ccc; font-size: 0.9rem;">预览区域</div>
+        </div>
     </div>
 
     <div class="bottom-panel">
         <div class="control-group">
-            <span class="control-label">1. 上传拼图素材 (多选)</span>
+            <span class="control-label">1. 比例切换</span>
             <div class="btn-row">
-                <label class="action-btn" style="flex:2;">
-                    选择图片 <input type="file" id="imageFiles" multiple accept="image/*" hidden>
-                </label>
-                <div id="file-count" class="action-btn" style="flex:1;">0 张</div>
+                <button class="opt-btn active" onclick="setRatio(this, 'ratio-3-4')">3:4</button>
+                <button class="opt-btn" onclick="setRatio(this, 'ratio-1-1')">1:1</button>
+                <button class="opt-btn" onclick="setRatio(this, 'ratio-9-16')">9:16</button>
             </div>
         </div>
 
         <div class="control-group">
-            <span class="control-label">2. 上传自定义水印 (可拖动)</span>
-            <label class="action-btn">
-                添加水印贴纸 <input type="file" id="watermarkFile" accept="image/*" hidden>
-            </label>
+            <span class="control-label">2. 素材与水印管理</span>
+            <div class="btn-row">
+                <label class="opt-btn" style="background: var(--bg-light);">
+                    拼图图片 <input type="file" id="imageFiles" multiple accept="image/*" hidden>
+                </label>
+                <label class="opt-btn" style="background: var(--bg-light);">
+                    上传水印 <input type="file" id="watermarkFile" accept="image/*" hidden>
+                </label>
+            </div>
         </div>
 
-        <div class="control-group" style="display: flex; justify-content: space-between; align-items: flex-end;">
-            <div>
-                <span class="control-label">3. 自定义价格</span>
-                <div class="price-container">
-                    ¥ <input type="text" class="price-input" value="9.90">
-                </div>
+        <div class="control-group" style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="color: #FF7E5F; font-weight: bold; font-size: 1.2rem;">
+                ¥ <input type="text" class="price-input" value="9.90">
             </div>
-            <button class="save-btn" style="width: 150px; margin: 0;">保存图片</button>
+            <button class="save-btn">保存图片</button>
         </div>
     </div>
 </div>
 
 <script>
-    // --- 1. 拼图预览功能 ---
-    const imageInput = document.getElementById('imageFiles');
-    const previewBox = document.getElementById('preview-scroll-box');
-    const fileCountText = document.getElementById('file-count');
-    const placeholder = document.getElementById('placeholder-text');
+    const canvas = document.getElementById('puzzle-canvas');
+    const watermarkContainer = document.getElementById('watermark-container');
+    const watermarkImg = document.getElementById('draggable-watermark');
 
-    imageInput.addEventListener('change', function() {
+    // --- 页面加载时：尝试读取上次保存的水印 ---
+    window.onload = () => {
+        const savedWatermark = localStorage.getItem('sea-salt-watermark');
+        if (savedWatermark) {
+            showWatermark(savedWatermark);
+        }
+    };
+
+    // --- 水印显示逻辑 ---
+    function showWatermark(src) {
+        watermarkImg.src = src;
+        watermarkContainer.style.display = 'block';
+        // 初始位置
+        if(!watermarkContainer.style.transform) {
+            watermarkContainer.style.transform = 'translate(20px, 20px)';
+            watermarkContainer.setAttribute('data-x', 20);
+            watermarkContainer.setAttribute('data-y', 20);
+        }
+    }
+
+    // --- 删除水印 ---
+    function removeWatermark() {
+        if(confirm('确定要删除当前水印并清空记录吗？')) {
+            watermarkContainer.style.display = 'none';
+            watermarkImg.src = '';
+            localStorage.removeItem('sea-salt-watermark'); // 清除本地缓存
+        }
+    }
+
+    // --- 上传并保存水印 ---
+    document.getElementById('watermarkFile').addEventListener('change', function() {
+        const file = this.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const base64 = e.target.result;
+            showWatermark(base64);
+            localStorage.setItem('sea-salt-watermark', base64); // 存入本地
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // --- 比例切换 ---
+    function setRatio(btn, ratioClass) {
+        document.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        canvas.className = ratioClass;
+    }
+
+    // --- 图片预览 ---
+    document.getElementById('imageFiles').addEventListener('change', function() {
         const files = Array.from(this.files);
         if (files.length === 0) return;
-
-        fileCountText.innerText = `${files.length} 张`;
-        placeholder.style.display = 'none';
-        
-        // 清理旧的拼图（保留水印）
-        const imgs = previewBox.querySelectorAll('.preview-img');
-        imgs.forEach(i => i.remove());
-
+        document.getElementById('file-count').innerText = `已选 ${files.length} 张`;
+        document.getElementById('placeholder').style.display = 'none';
+        canvas.querySelectorAll('.preview-img').forEach(i => i.remove());
         files.forEach(file => {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const img = document.createElement('img');
                 img.src = e.target.result;
                 img.classList.add('preview-img');
-                previewBox.appendChild(img);
+                canvas.appendChild(img);
             }
             reader.readAsDataURL(file);
         });
     });
 
-    // --- 2. 自定义水印功能 ---
-    const watermarkInput = document.getElementById('watermarkFile');
-    const watermarkImg = document.getElementById('draggable-watermark');
-
-    watermarkInput.addEventListener('change', function() {
-        const file = this.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            watermarkImg.src = e.target.result;
-            watermarkImg.style.display = 'block';
-            watermarkImg.style.transform = 'translate(0px, 0px)'; // 重置位置
-            watermarkImg.setAttribute('data-x', 0);
-            watermarkImg.setAttribute('data-y', 0);
-        };
-        reader.readAsDataURL(file);
-    });
-
-    // --- 3. 水印拖拽逻辑 (使用 interact.js) ---
-    interact('#draggable-watermark').draggable({
-        listeners: {
-            move (event) {
-                const target = event.target;
-                // 累加拖拽距离
-                const x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
-                const y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
-
-                // 应用变换
-                target.style.transform = `translate(${x}px, ${y}px)`;
-
-                // 保存坐标状态
-                target.setAttribute('data-x', x);
-                target.setAttribute('data-y', y);
-            }
-        },
-        modifiers: [
-            interact.modifiers.restrictRect({
-                restriction: 'parent', // 水印只能在预览框内移动
-                endOnly: true
-            })
-        ]
-    });
+    // --- 拖拽与缩放逻辑 (Interact.js) ---
+    let pos = { x: 20, y: 20 };
+    interact('#watermark-container')
+        .draggable({
+            listeners: {
+                move (event) {
+                    pos.x += event.dx; pos.y += event.dy;
+                    event.target.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
+                    event.target.setAttribute('data-x', pos.x);
+                    event.target.setAttribute('data-y', pos.y);
+                }
+            },
+            modifiers: [interact.modifiers.restrictRect({ restriction: 'parent' })]
+        })
+        .resizable({
+            edges: { right: '.resize-handle', bottom: '.resize-handle' },
+            listeners: {
+                move (event) {
+                    let x = parseFloat(event.target.getAttribute('data-x')) || pos.x;
+                    let y = parseFloat(event.target.getAttribute('data-y')) || pos.y;
+                    event.target.style.width = event.rect.width + 'px';
+                    event.target.style.height = event.rect.height + 'px';
+                    x += event.deltaRect.left; y += event.deltaRect.top;
+                    event.target.style.transform = `translate(${x}px, ${y}px)`;
+                    event.target.setAttribute('data-x', x);
+                    event.target.setAttribute('data-y', y);
+                    pos = {x, y};
+                }
+            },
+            modifiers: [
+                interact.modifiers.aspectRatio({ ratio: 'preserve' }),
+                interact.modifiers.restrictSize({ min: { width: 30, height: 30 } }),
+                interact.modifiers.restrictEdges({ restriction: 'parent' })
+            ]
+        });
 </script>
 
 </body>
