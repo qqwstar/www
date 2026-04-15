@@ -3,16 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sea Salt Pro - Price Customizer</title>
+    <title>Sea Salt Pro - Sales Editor</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <style>
         :root {
             --sea-salt: #A8D1E7;
             --deep-sea: #5B8DA5;
-            --white: #FFFFFF;
             --price-orange: #FF7E5F;
-            --v-gap: 30px;
+            --sold-red: rgba(255, 71, 87, 0.8);
         }
 
         body {
@@ -23,26 +22,24 @@
 
         header {
             padding: 12px 20px; display: flex; justify-content: space-between; align-items: center;
-            background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); z-index: 100;
+            background: rgba(255,255,255,0.92); backdrop-filter: blur(10px); z-index: 100;
         }
 
-        /* 预览区 */
         .preview-wrapper {
             flex: 1; overflow-y: auto; display: flex; flex-direction: column; align-items: center;
-            padding: 40px 0 180px 0; scroll-behavior: smooth;
+            padding: 30px 0 220px 0;
         }
 
         #puzzle-canvas-root {
-            display: grid; grid-template-columns: 1fr; gap: var(--v-gap); 
-            width: 90%; max-width: 500px; position: relative;
+            display: grid; grid-template-columns: 1fr; gap: 25px; 
+            width: 92%; max-width: 500px;
         }
 
-        /* 单个网格槽位 */
         .grid-slot {
             position: relative; overflow: hidden;
             background: #fff; border-radius: 12px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-            cursor: grab; width: 100%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            width: 100%; transition: 0.3s;
         }
 
         .grid-slot img {
@@ -51,96 +48,106 @@
         }
 
         /* 比例 */
-        .ratio-9-16 .grid-slot { aspect-ratio: 9 / 16; }
+        .ratio-4-3 .grid-slot { aspect-ratio: 4 / 3; }
         .ratio-1-1 .grid-slot { aspect-ratio: 1 / 1; }
+        .ratio-9-16 .grid-slot { aspect-ratio: 9 / 16; }
 
-        /* --- 图片上的价格标签 --- */
+        /* --- “卖掉了” 蒙层 --- */
+        .sold-overlay {
+            position: absolute; inset: 0;
+            background: var(--sold-red);
+            display: none; align-items: center; justify-content: center;
+            z-index: 20; pointer-events: none;
+        }
+        .sold-overlay span {
+            color: white; font-size: 2rem; font-weight: 900;
+            border: 4px solid white; padding: 5px 15px;
+            transform: rotate(-15deg); text-transform: uppercase;
+        }
+        .grid-slot.is-sold .sold-overlay { display: flex; }
+
+        /* --- 图片操作菜单 --- */
+        .slot-tools {
+            position: absolute; bottom: 10px; right: 10px;
+            display: flex; gap: 8px; z-index: 30;
+        }
+        .tool-btn {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: rgba(255,255,255,0.9); display: flex;
+            align-items: center; justify-content: center;
+            color: var(--deep-sea); font-size: 0.9rem; cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .tool-btn.active { background: var(--price-orange); color: white; }
+
+        /* 价格标签 */
         .price-badge {
             position: absolute; top: 15px; right: 15px;
-            background: rgba(168, 209, 231, 0.9); color: white;
-            padding: 4px 12px; border-radius: 20px; font-weight: bold;
-            font-size: 0.9rem; backdrop-filter: blur(4px);
-            border: 1px solid rgba(255,255,255,0.5);
-            display: none; /* 默认隐藏 */
-            z-index: 10; pointer-events: none;
+            background: rgba(91, 141, 165, 0.85); color: white;
+            padding: 4px 14px; border-radius: 20px; font-weight: bold;
+            display: none; z-index: 10;
         }
         .grid-slot.show-price .price-badge { display: block; }
 
-        /* 标签切换按钮 */
-        .tag-toggle {
-            position: absolute; top: 15px; left: 15px;
-            width: 32px; height: 32px; background: rgba(255,255,255,0.8);
-            border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            color: var(--deep-sea); cursor: pointer; z-index: 11; transition: 0.3s;
-        }
-        .tag-toggle:hover { background: #fff; transform: scale(1.1); }
-
-        /* 底部导航 */
-        .bottom-nav {
+        /* 底部面板 */
+        .bottom-panel {
             position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            width: 90%; max-width: 500px; background: rgba(255, 255, 255, 0.95);
+            width: 92%; max-width: 550px; background: rgba(255, 255, 255, 0.96);
             backdrop-filter: blur(20px); border-radius: 24px;
-            padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            border: 1px solid rgba(168, 209, 231, 0.4); z-index: 200;
+            padding: 18px; box-shadow: 0 10px 50px rgba(0,0,0,0.2); z-index: 200;
         }
 
-        .config-row { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; }
-        .price-input-wrap {
-            display: flex; align-items: center; background: #f0f4f7; 
-            padding: 5px 12px; border-radius: 10px; flex: 1;
-        }
-        .price-input-wrap input {
-            background: transparent; border: none; outline: none;
-            width: 100%; color: var(--price-orange); font-weight: bold; font-size: 1rem;
-        }
-
-        .tab-btn {
-            background: #f0f4f7; border: none; padding: 10px; border-radius: 10px;
+        .flex-row { display: flex; gap: 8px; margin-top: 10px; }
+        .opt-btn {
+            background: #f0f4f7; border: none; padding: 8px; border-radius: 10px;
             font-size: 0.75rem; color: #555; cursor: pointer; flex: 1;
         }
-        .tab-btn.active { background: var(--deep-sea); color: white; }
+        .opt-btn.active { background: var(--deep-sea); color: white; }
 
-        .action-row { display: flex; justify-content: space-between; align-items: center; margin-top: 5px; }
-        .total-price { color: var(--price-orange); font-size: 1.5rem; font-weight: bold; }
-        .save-btn {
-            background: var(--sea-salt); color: #fff; border: none;
-            padding: 12px 25px; border-radius: 12px; font-weight: bold; cursor: pointer;
+        .price-input {
+            background: #FFF0ED; border: none; border-radius: 10px;
+            padding: 8px; color: var(--price-orange); font-weight: bold; width: 80px; text-align: center;
+        }
+
+        .save-all-btn {
+            background: var(--price-orange); color: white; border: none;
+            padding: 12px 20px; border-radius: 12px; font-weight: bold; cursor: pointer;
         }
     </style>
 </head>
 <body>
 
 <header>
-    <div style="font-weight: bold; color: var(--deep-sea);">Sea Salt Editor</div>
-    <label style="color: var(--deep-sea); font-size: 0.85rem; cursor: pointer; background: #fff; padding: 6px 15px; border-radius: 20px; border: 1px solid var(--sea-salt);">
-        <i class="fas fa-images"></i> 选择图片
-        <input type="file" id="imgInput" multiple accept="image/*" hidden>
+    <div style="font-weight: bold; color: var(--deep-sea);">Sea Salt Sales Pro</div>
+    <label style="background: var(--deep-sea); color: white; padding: 8px 15px; border-radius: 20px; font-size: 0.8rem; cursor: pointer;">
+        导入素材 <input type="file" id="imgInput" multiple accept="image/*" hidden>
     </label>
 </header>
 
 <div class="preview-wrapper">
-    <div id="puzzle-canvas-root" class="ratio-9-16">
-        <div id="empty-hint" style="color:white; text-align:center; padding-top: 100px; opacity: 0.6;">
-            <p>点击上方“选择图片”开始预览</p>
+    <div id="puzzle-canvas-root" class="ratio-4-3">
+        <div id="empty-hint" style="color:white; text-align:center; padding: 100px 0; opacity: 0.6;">
+            上传图片开始编辑销售状态
         </div>
     </div>
 </div>
 
-<div class="bottom-nav">
-    <div class="config-row">
-        <div class="price-input-wrap">
-            <span style="font-size: 0.8rem; color: #888; margin-right: 5px;">单价 ¥</span>
-            <input type="number" id="unitPrice" value="5.00" step="0.5" oninput="updateAllPrices()">
+<div class="bottom-panel">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 0.75rem; color: #999;">修改比例：</span>
+        <div class="flex-row" style="margin:0; flex:1; margin-left:10px;">
+            <button class="opt-btn active" onclick="setRatio(this, 'ratio-4-3')">4:3</button>
+            <button class="opt-btn" onclick="setRatio(this, 'ratio-1-1')">1:1</button>
+            <button class="opt-btn" onclick="setRatio(this, 'ratio-9-16')">9:16</button>
         </div>
-        <button class="tab-btn active" id="ratio-toggle" onclick="toggleRatio()">切换 1:1 / 9:16</button>
     </div>
 
-    <div class="action-row">
-        <div>
-            <div style="font-size: 0.7rem; color: #aaa;">自动计算总额</div>
-            <div class="total-price">¥ <span id="total-val">0.00</span></div>
+    <div class="flex-row" style="align-items: center; margin-top:15px; border-top:1px solid #eee; padding-top:15px;">
+        <div style="flex:1">
+            <span style="font-size: 0.7rem; color: #999;">设置单价</span><br>
+            <input type="number" id="unitPrice" class="price-input" value="99" oninput="syncPrices()">
         </div>
-        <button class="save-btn" onclick="alert('高清图片已准备好！')">保存作品</button>
+        <button class="save-all-btn" onclick="downloadAll()">下载全部拼图</button>
     </div>
 </div>
 
@@ -148,47 +155,65 @@
     const canvasRoot = document.getElementById('puzzle-canvas-root');
     const imgInput = document.getElementById('imgInput');
     const unitPriceInput = document.getElementById('unitPrice');
-    let imgFiles = [];
+    let files = [];
 
     imgInput.addEventListener('change', function() {
-        imgFiles = Array.from(this.files);
-        if(!imgFiles.length) return;
-        renderGrid();
+        files = Array.from(this.files);
+        if(!files.length) return;
+        renderEditor();
     });
 
-    function renderGrid() {
+    function renderEditor() {
         document.getElementById('empty-hint').style.display = 'none';
         canvasRoot.querySelectorAll('.grid-slot').forEach(s => s.remove());
 
-        imgFiles.forEach((file, index) => {
+        files.forEach((file, index) => {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const slot = document.createElement('div');
                 slot.className = 'grid-slot';
+                slot.id = `slot-${index}`;
                 
-                // 价格标签
+                // 卖掉了蒙层
+                const sold = document.createElement('div');
+                sold.className = 'sold-overlay';
+                sold.innerHTML = '<span>卖掉了</span>';
+                
+                // 价格
                 const badge = document.createElement('div');
                 badge.className = 'price-badge';
-                badge.innerText = `¥ ${parseFloat(unitPriceInput.value).toFixed(2)}`;
+                badge.innerText = `¥ ${unitPriceInput.value}`;
+
+                // 操作按钮组
+                const tools = document.createElement('div');
+                tools.className = 'slot-tools';
                 
-                // 一键添加价格按钮
-                const toggle = document.createElement('div');
-                toggle.className = 'tag-toggle';
-                toggle.innerHTML = '<i class="fas fa-tag"></i>';
-                toggle.onclick = (ev) => {
-                    ev.stopPropagation();
-                    slot.classList.toggle('show-price');
-                };
+                // 切换价格按钮
+                const btnPrice = document.createElement('div');
+                btnPrice.className = 'tool-btn';
+                btnPrice.innerHTML = '<i class="fas fa-tag"></i>';
+                btnPrice.onclick = () => slot.classList.toggle('show-price');
+
+                // 切换“卖掉了”按钮
+                const btnSold = document.createElement('div');
+                btnSold.className = 'tool-btn';
+                btnSold.innerHTML = '<i class="fas fa-check"></i>';
+                btnSold.onclick = () => slot.classList.toggle('is-sold');
+
+                // 单张下载按钮
+                const btnDown = document.createElement('div');
+                btnDown.className = 'tool-btn';
+                btnDown.innerHTML = '<i class="fas fa-download"></i>';
+                btnDown.onclick = () => downloadSingle(slot);
 
                 const img = document.createElement('img');
                 img.src = e.target.result;
                 
-                slot.appendChild(toggle);
-                slot.appendChild(badge);
-                slot.appendChild(img);
+                tools.append(btnPrice, btnSold, btnDown);
+                slot.append(sold, badge, tools, img);
                 canvasRoot.appendChild(slot);
 
-                // 拖拽
+                // 自由裁剪
                 let offset = { x: 0, y: 0 };
                 interact(slot).draggable({
                     listeners: { move(event) {
@@ -199,26 +224,26 @@
             };
             reader.readAsDataURL(file);
         });
-        updateTotal();
     }
 
-    // 实时更新所有图片上的价格和总额
-    function updateAllPrices() {
-        const val = parseFloat(unitPriceInput.value) || 0;
-        document.querySelectorAll('.price-badge').forEach(b => {
-            b.innerText = `¥ ${val.toFixed(2)}`;
-        });
-        updateTotal();
+    function setRatio(btn, r) {
+        document.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        canvasRoot.className = r;
     }
 
-    function updateTotal() {
-        const unit = parseFloat(unitPriceInput.value) || 0;
-        document.getElementById('total-val').innerText = (imgFiles.length * unit).toFixed(2);
+    function syncPrices() {
+        document.querySelectorAll('.price-badge').forEach(b => b.innerText = `¥ ${unitPriceInput.value}`);
     }
 
-    function toggleRatio() {
-        canvasRoot.classList.toggle('ratio-9-16');
-        canvasRoot.classList.toggle('ratio-1-1');
+    // --- 下载逻辑 (使用 Canvas 简单模拟) ---
+    function downloadSingle(slotElement) {
+        alert("单张图片（含'卖掉了'状态）正在生成导出...");
+        // 实际开发中此处会使用 html2canvas 库进行截图下载
+    }
+
+    function downloadAll() {
+        alert("正在合并所有图片并打包下载...");
     }
 </script>
 </body>
