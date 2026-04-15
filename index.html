@@ -1,390 +1,699 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Sea Salt Grid</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-<script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
-<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-<style>
-:root{
-  --sea-salt:#A8D1E7;
-  --deep-sea:#5B8DA5;
-  --price-orange:#FF7E5F;
-  --sold-red:rgba(255,71,87,0.85);
-}
-*{box-sizing:border-box;}
-body{
-  font-family:PingFang SC,sans-serif;
-  background:var(--sea-salt);
-  margin:0;
-  display:flex;
-  flex-direction:column;
-  height:100vh;
-  overflow:hidden;
-  padding-bottom:env(safe-area-inset-bottom);
-}
-header{
-  padding:12px 20px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  background:rgba(255,255,255,0.95);
-  z-index:1000;
-  flex-shrink:0;
-}
-/* 比例下拉菜单 - 修复交互 */
-.ratio-dropdown{position:relative;display:inline-block;}
-.ratio-select{
-  background:var(--deep-sea);
-  color:#fff;
-  padding:6px 24px 6px 14px;
-  border-radius:15px;
-  font-size:0.8rem;
-  cursor:pointer;
-  position:relative;
-}
-.ratio-select::after{
-  content:"▼";
-  font-size:0.6rem;
-  position:absolute;
-  right:8px;top:50%;
-  transform:translateY(-50%);
-}
-.ratio-options{
-  position:absolute;
-  top:calc(100% + 6px);
-  right:0;
-  background:#fff;
-  border-radius:8px;
-  box-shadow:0 4px 12px rgba(0,0,0,0.15);
-  list-style:none;
-  padding:8px 0;
-  margin:0;
-  min-width:120px;
-  display:none;
-  z-index:2000;
-}
-.ratio-options li{
-  padding:9px 16px;
-  cursor:pointer;
-  font-size:0.8rem;
-  color:#333;
-}
-.ratio-options li:hover{background:#f0f4f7;}
-.ratio-options li.active{background:var(--deep-sea);color:#fff;}
-.ratio-dropdown.open .ratio-options{display:block;}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>海盐拼图 · 横向自适应</title>
+  <!-- 字体图标 + 交互库 + 截图库 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  <style>
+    :root {
+      --sea-salt: #A8D1E7;
+      --deep-sea: #5B8DA5;
+      --price-orange: #FF7E5F;
+      --sold-red: rgba(255, 71, 87, 0.85);
+      --card-radius: 16px;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'PingFang SC', 'Helvetica Neue', sans-serif;
+      background: var(--sea-salt);
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    header {
+      padding: 12px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(8px);
+      z-index: 1000;
+      flex-shrink: 0;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
 
-.preview-wrapper{
-  flex:1;
-  overflow-y:auto;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  padding:20px 0;
-}
-/* 核心修复：拼图容器，彻底无缝，grid-template-columns 动态计算 */
-#puzzle-canvas-root{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:0;
-  width:94%;
-  max-width:900px;
-  background:var(--sea-salt);
-  position:relative;
-}
-/* 水印容器 - 独立拖动，不影响格子 */
-#watermarkWrap{
-  position:absolute;
-  left:50%;top:50%;
-  transform:translate(-50%,-50%);
-  z-index:60;
-  cursor:grab;
-}
-#watermarkWrap:active{cursor:grabbing;}
-#globalWatermark{
-  user-select:none;
-  pointer-events:none;
-  max-width:400px;
-}
-.grid-slot{
-  position:relative;
-  overflow:hidden;
-  background:#fff;
-  width:100%;
-  aspect-ratio:1/1; /* 固定比例，确保显示 */
-}
-.slot-index{
-  position:absolute;top:10px;left:10px;
-  background:rgba(0,0,0,0.5);
-  color:#fff;
-  width:24px;height:24px;
-  border-radius:50%;
-  display:flex;
-  align-items:center;justify-content:center;
-  font-size:0.8rem;
-  z-index:25;
-}
-.grid-slot img{
-  position:absolute;
-  width:100%;height:100%;
-  object-fit:cover;
-}
+    /* 比例下拉 */
+    .ratio-dropdown {
+      position: relative;
+      display: inline-block;
+    }
+    .ratio-select {
+      background: var(--deep-sea);
+      color: white;
+      padding: 8px 24px 8px 14px;
+      border-radius: 30px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      position: relative;
+    }
+    .ratio-select::after {
+      content: "▼";
+      font-size: 0.6rem;
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    .ratio-options {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      list-style: none;
+      padding: 8px 0;
+      margin: 0;
+      min-width: 130px;
+      display: none;
+      z-index: 2000;
+    }
+    .ratio-options li {
+      padding: 10px 20px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: #1e2f3a;
+    }
+    .ratio-options li:hover {
+      background: #e5f0f7;
+    }
+    .ratio-options li.active {
+      background: var(--deep-sea);
+      color: white;
+    }
+    .ratio-dropdown.open .ratio-options {
+      display: block;
+    }
 
-.ratio-3-4 .grid-slot{aspect-ratio:3/4;}
-.ratio-9-16 .grid-slot{aspect-ratio:9/16;}
-.ratio-4-3 .grid-slot{aspect-ratio:4/3;}
-.ratio-16-9 .grid-slot{aspect-ratio:16/9;}
+    /* 横向滚动预览区 — 核心自适应 */
+    .preview-wrapper {
+      flex: 1;
+      overflow-x: auto;
+      overflow-y: hidden;
+      display: flex;
+      align-items: center;
+      padding: 16px 12px;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      /* 保证横向呼吸感 */
+    }
 
-.sold-overlay{
-  position:absolute;inset:0;
-  background:var(--sold-red);
-  display:none;align-items:center;justify-content:center;
-  z-index:20;
-}
-.sold-overlay span{
-  color:#fff;font-size:1.2rem;font-weight:bold;
-  border:2px solid #fff;padding:2px 8px;
-  transform:rotate(-15deg);
-}
-.grid-slot.is-sold .sold-overlay{display:flex;}
+    /* 拼图容器——真正的横向流式网格，完全自动适应图片数量 */
+    #puzzle-canvas-root {
+      display: flex;
+      flex-wrap: nowrap;       /* 关键：横向不换行，永远一行 */
+      gap: 0px;                /* 无缝拼接感 */
+      margin: 0 auto;
+      background: var(--sea-salt);
+      border-radius: 20px;
+      padding: 4px;
+      scroll-snap-align: center;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+      /* 所有格子都会根据图片数量自动伸缩宽度，完美适应 */
+    }
 
-.price-wrap{
-  position:absolute;top:10px;right:10px;
-  z-index:12;display:none;
-}
-.grid-slot.show-price .price-wrap{display:block;}
-.slot-price{
-  width:70px;border:none;padding:3px 6px;
-  border-radius:6px;background:var(--deep-sea);color:#fff;outline:none;
-}
-.slot-tools{
-  position:absolute;bottom:8px;right:8px;
-  display:flex;gap:5px;z-index:30;
-}
-.tool-btn{
-  width:32px;height:32px;border-radius:50%;
-  background:rgba(255,255,255,0.9);
-  display:flex;align-items:center;justify-content:center;
-  color:var(--deep-sea);cursor:pointer;
-}
-#toast{
-  position:fixed;top:50%;left:50%;
-  transform:translate(-50%,-50%);
-  background:rgba(0,0,0,0.8);color:#fff;
-  padding:15px 25px;border-radius:12px;z-index:9999;display:none;
-}
-.bottom-panel{
-  position:fixed;left:0;right:0;bottom:0;
-  background:#fff;padding:12px 15px;padding-bottom:calc(15px + env(safe-area-inset-bottom));
-  border-radius:24px 24px 0 0;box-shadow:0 -6px 20px rgba(0,0,0,0.08);z-index:200;
-}
-.ctrl-row{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;}
-.ctrl-row input{padding:6px 8px;border:1px solid #eee;border-radius:8px;}
-.ctrl-row button{padding:6px 10px;border:none;background:var(--deep-sea);color:#fff;border-radius:8px;}
-.size-slider{width:110px;}
-.price-line{display:flex;gap:10px;align-items:center;}
-.save-btn{flex:1;padding:10px;border:none;border-radius:10px;background:var(--price-orange);color:#fff;font-weight:bold;}
-</style>
+    /* 水印容器 — 绝对定位，可拖动 */
+    #watermarkWrap {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 60;
+      cursor: grab;
+      pointer-events: auto;
+    }
+    #watermarkWrap:active {
+      cursor: grabbing;
+    }
+    #globalWatermark {
+      user-select: none;
+      pointer-events: none;
+      max-width: 400px;
+      opacity: 0.8;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+    }
+
+    /* 每个格子 —— 由flex决定宽度，完美自动适应 */
+    .grid-slot {
+      position: relative;
+      overflow: hidden;
+      background: #fff;
+      flex: 1 0 auto;          /* 关键：根据内容自动分配宽度，不折行 */
+      min-width: 80px;         /* 极小屏兜底 */
+      aspect-ratio: 1/1;       /* 默认正方形，由父级ratio类控制变化 */
+      border-radius: 6px;
+      margin: 0 1px;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.6);
+      transition: transform 0.1s;
+    }
+
+    /* 比例控制通过父级类影响aspect-ratio */
+    .ratio-1-1 .grid-slot { aspect-ratio: 1/1; }
+    .ratio-3-4 .grid-slot { aspect-ratio: 3/4; }
+    .ratio-9-16 .grid-slot { aspect-ratio: 9/16; }
+    .ratio-4-3 .grid-slot { aspect-ratio: 4/3; }
+    .ratio-16-9 .grid-slot { aspect-ratio: 16/9; }
+
+    /* 索引标记 */
+    .slot-index {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      background: rgba(30, 47, 58, 0.7);
+      backdrop-filter: blur(4px);
+      color: white;
+      width: 26px;
+      height: 26px;
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      z-index: 25;
+    }
+
+    .grid-slot img {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      pointer-events: none;     /* 防止拖拽干扰 */
+    }
+
+    /* 已售蒙层 */
+    .sold-overlay {
+      position: absolute;
+      inset: 0;
+      background: var(--sold-red);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      backdrop-filter: blur(2px);
+    }
+    .sold-overlay span {
+      color: white;
+      font-size: 1.3rem;
+      font-weight: 800;
+      border: 3px solid white;
+      padding: 4px 12px;
+      transform: rotate(-15deg);
+      border-radius: 12px;
+    }
+    .grid-slot.is-sold .sold-overlay {
+      display: flex;
+    }
+
+    /* 价格区域 */
+    .price-wrap {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      z-index: 12;
+      display: none;
+    }
+    .grid-slot.show-price .price-wrap {
+      display: block;
+    }
+    .slot-price {
+      width: 80px;
+      border: none;
+      padding: 5px 8px;
+      border-radius: 30px;
+      background: var(--deep-sea);
+      color: white;
+      outline: none;
+      font-weight: 600;
+      text-align: center;
+      backdrop-filter: blur(4px);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+
+    /* 角落工具按钮 */
+    .slot-tools {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      display: flex;
+      gap: 6px;
+      z-index: 30;
+    }
+    .tool-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 34px;
+      background: rgba(255, 255, 255, 0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--deep-sea);
+      cursor: pointer;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      font-size: 1rem;
+      backdrop-filter: blur(2px);
+    }
+
+    #toast {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(18, 30, 40, 0.9);
+      color: white;
+      padding: 14px 28px;
+      border-radius: 50px;
+      z-index: 9999;
+      display: none;
+      font-weight: 500;
+      backdrop-filter: blur(12px);
+      white-space: nowrap;
+    }
+
+    /* 底部控制栏 */
+    .bottom-panel {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      padding: 16px 18px;
+      padding-bottom: calc(18px + env(safe-area-inset-bottom));
+      border-radius: 30px 30px 0 0;
+      box-shadow: 0 -8px 25px rgba(0,0,0,0.08);
+      z-index: 200;
+    }
+    .ctrl-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .ctrl-row input {
+      padding: 10px 10px;
+      border: 1.5px solid #d4e2ec;
+      border-radius: 24px;
+      background: white;
+      font-size: 0.9rem;
+    }
+    .ctrl-row button {
+      padding: 10px 16px;
+      border: none;
+      background: var(--deep-sea);
+      color: white;
+      border-radius: 40px;
+      font-weight: 600;
+      box-shadow: 0 4px 8px rgba(91,141,165,0.3);
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.1s;
+    }
+    .size-slider {
+      width: 130px;
+    }
+    .price-line {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .save-btn {
+      flex: 1;
+      padding: 14px;
+      border: none;
+      border-radius: 40px;
+      background: var(--price-orange);
+      color: white;
+      font-weight: bold;
+      font-size: 1.1rem;
+      box-shadow: 0 6px 12px rgba(255,126,95,0.3);
+    }
+    .hint-note {
+      font-size: 0.7rem;
+      color: #3e5f6e;
+      margin-left: 4px;
+    }
+    /* 横向滚动提示 */
+    .scroll-hint {
+      text-align: center;
+      margin-top: 4px;
+      opacity: 0.7;
+    }
+  </style>
 </head>
 <body>
+
 <header>
-  <b style="color:var(--deep-sea);">Sea Salt Grid</b>
-  <div class="ratio-dropdown" id="ratioDropdown">
-    <div class="ratio-select" id="ratioToggle">1:1</div>
-    <ul class="ratio-options" id="ratioOpts">
-      <li data-r="ratio-1-1" class="active">1:1</li>
-      <li data-r="ratio-3-4">3:4</li>
-      <li data-r="ratio-9-16">9:16</li>
-      <li data-r="ratio-4-3">4:3</li>
-      <li data-r="ratio-16-9">16:9</li>
-    </ul>
+  <b style="color:var(--deep-sea); font-size:1.2rem;"><i class="fas fa-cubes" style="margin-right:6px;"></i>海盐横向拼图</b>
+  <div style="display:flex; gap:8px;">
+    <div class="ratio-dropdown" id="ratioDropdown">
+      <div class="ratio-select" id="ratioToggle">1:1</div>
+      <ul class="ratio-options" id="ratioOpts">
+        <li data-r="ratio-1-1" class="active">1:1 (正方)</li>
+        <li data-r="ratio-3-4">3:4</li>
+        <li data-r="ratio-9-16">9:16</li>
+        <li data-r="ratio-4-3">4:3</li>
+        <li data-r="ratio-16-9">16:9</li>
+      </ul>
+    </div>
+    <label style="background:var(--deep-sea);color:white;padding:8px 16px;border-radius:40px;font-size:0.8rem;font-weight:500;box-shadow:0 4px 8px rgba(0,0,0,0.1);">
+      <i class="fas fa-cloud-upload-alt"></i> 导入 
+      <input type="file" id="imgInput" multiple accept="image/*" hidden>
+    </label>
   </div>
-  <label style="background:var(--deep-sea);color:#fff;padding:6px 14px;border-radius:15px;font-size:0.8rem;">
-    导入图片 <input type="file" id="imgInput" multiple hidden>
-  </label>
 </header>
+
 <div id="toast"></div>
 
+<!-- 横向滚动预览区 -->
 <div class="preview-wrapper">
   <div id="puzzle-canvas-root" class="ratio-1-1">
+    <!-- 水印层 (始终存在) -->
     <div id="watermarkWrap" style="display:none;">
-      <img id="globalWatermark">
+      <img id="globalWatermark" alt="水印">
     </div>
+    <!-- 默认空状态展示示例占位? 不需要，导入后才生成 -->
   </div>
 </div>
 
+<!-- 底部操作面板 -->
 <div class="bottom-panel">
   <div class="ctrl-row">
-    <input type="number" id="colInput" min="1" value="3" placeholder="列">
-    <span>×</span>
-    <input type="number" id="rowInput" min="1" value="3" placeholder="行">
-    <button onclick="applyCustomGrid()">应用网格</button>
-    <button onclick="autoGrid()" style="background:#777;">自动排版</button>
+    <button onclick="applyHorizontalAuto()" style="background: #2f5e74;"><i class="fas fa-arrows-alt-h"></i> 横向自适应</button>
+    <button onclick="toggleAllPrice()"><i class="fas fa-tag"></i> 显示价格</button>
+    <button onclick="toggleAllSold()"><i class="fas fa-ban"></i> 切换已售</button>
+    <span class="hint-note">← 左右滑动浏览</span>
   </div>
   <div class="ctrl-row">
-    <label>水印:</label>
+    <label><i class="fas fa-watermark"></i></label>
     <input type="file" id="wmFile" accept="image/*">
-    <input class="size-slider" type="range" id="wmSizeSld" min="50" max="400" value="180">
-    <button onclick="clearWM()" style="background:#666;">移除</button>
+    <input class="size-slider" type="range" id="wmSizeSld" min="50" max="400" value="160">
+    <button onclick="clearWM()" style="background:#5f7f8f;">移除水印</button>
   </div>
   <div class="price-line">
-    <label>单价:</label>
-    <input type="number" id="globalPrice" value="99" style="width:72px;padding:8px;border-radius:8px;border:1px solid #eee;">
-    <button class="save-btn" onclick="downloadAll()">合成下载</button>
+    <label>统一单价:</label>
+    <input type="number" id="globalPrice" value="99" style="width:80px;padding:10px;border-radius:30px;border:1.5px solid #bdd3e0;">
+    <button class="save-btn" onclick="downloadAll()"><i class="fas fa-download"></i> 合成并保存</button>
   </div>
+  <div style="font-size:0.75rem; margin-top:8px; color:#4e6f7e;">✨ 拖拽格子可互换位置 · 水印可拖动</div>
 </div>
 
 <script>
-const canvasRoot = document.getElementById('puzzle-canvas-root');
-const toast = document.getElementById('toast');
-let uploadedFiles = [];
-let currentCols = 3;
+  (function(){
+    "use strict";
 
-// ========== 1. 修复比例切换 ==========
-const drop = document.getElementById("ratioDropdown");
-const toggleBtn = document.getElementById("ratioToggle");
-const optList = document.querySelectorAll("#ratioOpts li");
+    const canvasRoot = document.getElementById('puzzle-canvas-root');
+    const toast = document.getElementById('toast');
+    const wmWrap = document.getElementById('watermarkWrap');
+    const wmImg = document.getElementById('globalWatermark');
+    const wmSld = document.getElementById('wmSizeSld');
+    
+    let uploadedFiles = [];            // 存储图片文件
+    let currentRatioClass = 'ratio-1-1';
 
-toggleBtn.onclick = e=>{
-  e.stopPropagation();
-  drop.classList.toggle("open");
-};
-document.addEventListener("click",()=>drop.classList.remove("open"));
-optList.forEach(li=>{
-  li.onclick = (e)=>{
-    e.stopPropagation();
-    optList.forEach(x=>x.classList.remove("active"));
-    li.classList.add("active");
-    toggleBtn.innerText = li.innerText;
-    canvasRoot.className = li.dataset.r;
-    drop.classList.remove("open");
-    reIndexVisual();
-  }
-});
+    // 水印偏移量
+    let wmOffsetX = 0, wmOffsetY = 0;
 
-// ========== 2. 水印功能 (独立拖动) ==========
-const wmWrap = document.getElementById("watermarkWrap");
-const wmImg = document.getElementById("globalWatermark");
-const wmSld = document.getElementById("wmSizeSld");
-let wmX=0,wmY=0;
-
-(function loadWM(){
-  let url = localStorage.getItem("saveWM");
-  let sz = localStorage.getItem("wmSz")||180;
-  if(url){
-    wmImg.src = url;
-    wmImg.style.width = sz+"px";
-    wmSld.value = sz;
-    wmWrap.style.display="block";
-  }
-})();
-document.getElementById("wmFile").onchange = e=>{
-  let f = e.target.files[0];
-  if(!f)return;
-  const rd = new FileReader();
-  rd.onload=ev=>{
-    localStorage.setItem("saveWM",ev.target.result);
-    wmImg.src = ev.target.result;
-    wmWrap.style.display="block";
-  }
-  rd.readAsDataURL(f);
-};
-wmSld.oninput=()=>{
-  let s=wmSld.value;
-  wmImg.style.width = s+"px";
-  localStorage.setItem("wmSz",s);
-};
-// 水印拖动
-interact("#watermarkWrap").draggable({
-  listeners:{
-    move(e){
-      wmX += e.dx;
-      wmY += e.dy;
-      wmWrap.style.left = `calc(50% + ${wmX}px)`;
-      wmWrap.style.top  = `calc(50% + ${wmY}px)`;
+    // Toast 提示
+    function showToast(msg, duration=1500) {
+      toast.style.display = 'block';
+      toast.innerText = msg;
+      setTimeout(() => toast.style.display = 'none', duration);
     }
-  }
-});
-function clearWM(){
-  localStorage.removeItem("saveWM");
-  localStorage.removeItem("wmSz");
-  wmWrap.style.display="none";
-  wmImg.src="";
-  document.getElementById("wmFile").value="";
-  wmX=wmY=0;
-}
 
-// ========== 3. 拼图格子拖拽互换顺序 ==========
-canvasRoot.addEventListener("pointerdown", (e) => {
-  if (e.target.closest("#watermarkWrap")) return; // 点击水印不触发
-  const slot = e.target.closest(".grid-slot");
-  if (!slot) return;
+    // ---------- 比例下拉交互 ----------
+    const drop = document.getElementById("ratioDropdown");
+    const toggleBtn = document.getElementById("ratioToggle");
+    const optList = document.querySelectorAll("#ratioOpts li");
+    
+    toggleBtn.onclick = (e) => {
+      e.stopPropagation();
+      drop.classList.toggle("open");
+    };
+    document.addEventListener("click", () => drop.classList.remove("open"));
+    
+    optList.forEach(li => {
+      li.onclick = (e) => {
+        e.stopPropagation();
+        optList.forEach(l => l.classList.remove("active"));
+        li.classList.add("active");
+        toggleBtn.innerText = li.innerText.split(' ')[0]; 
+        const ratioClass = li.dataset.r;
+        canvasRoot.className = ratioClass;
+        currentRatioClass = ratioClass;
+        drop.classList.remove("open");
+        // 无需重新渲染，aspect-ratio自动适应
+      };
+    });
 
-  let startX = e.clientX;
-  let startY = e.clientY;
-  let originalIndex = Array.from(canvasRoot.children).indexOf(slot);
-  slot.style.zIndex = "100";
-
-  const onPointerMove = (moveEvent) => {
-    const dx = moveEvent.clientX - startX;
-    const dy = moveEvent.clientY - startY;
-    slot.style.transform = `translate(${dx}px, ${dy}px)`;
-  };
-
-  const onPointerUp = (upEvent) => {
-    document.removeEventListener("pointermove", onPointerMove);
-    document.removeEventListener("pointerup", onPointerUp);
-
-    slot.style.zIndex = "";
-    slot.style.transform = "";
-
-    // 找到放置目标
-    const dropZone = document.elementFromPoint(upEvent.clientX, upEvent.clientY).closest(".grid-slot");
-    if (dropZone && dropZone !== slot) {
-      const targetIndex = Array.from(canvasRoot.children).indexOf(dropZone);
-      // 交换DOM节点
-      if (originalIndex < targetIndex) {
-        canvasRoot.insertBefore(slot, dropZone.nextSibling);
-      } else {
-        canvasRoot.insertBefore(slot, dropZone);
+    // ---------- 水印功能 ----------
+    function loadWmFromStorage() {
+      const url = localStorage.getItem("seaSaltWM");
+      const sz = localStorage.getItem("seaSaltWMSize") || 160;
+      if (url) {
+        wmImg.src = url;
+        wmImg.style.width = sz + 'px';
+        wmSld.value = sz;
+        wmWrap.style.display = 'block';
       }
     }
-    reIndexVisual();
-  };
+    loadWmFromStorage();
 
-  document.addEventListener("pointermove", onPointerMove);
-  document.addEventListener("pointerup", onPointerUp);
-});
+    document.getElementById("wmFile").onchange = (e) => {
+      const f = e.target.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        localStorage.setItem("seaSaltWM", ev.target.result);
+        wmImg.src = ev.target.result;
+        wmWrap.style.display = 'block';
+      };
+      reader.readAsDataURL(f);
+    };
 
-// ========== 4. 布局控制 ==========
-function autoGrid(){
-  const cnt = uploadedFiles.length;
-  if(!cnt) return toastShow("先上传图片");
-  currentCols = Math.ceil(Math.sqrt(cnt));
-  canvasRoot.style.gridTemplateColumns = `repeat(${currentCols},1fr)`;
-  reIndexVisual();
-}
-function applyCustomGrid(){
-  let c = +document.getElementById("colInput").value||3;
-  currentCols=Math.max(1,c);
-  canvasRoot.style.gridTemplateColumns = `repeat(${currentCols},1fr)`;
-  reIndexVisual();
-}
-function reIndexVisual(){
-  let list = Array.from(canvasRoot.querySelectorAll(".grid-slot"));
-  list.forEach((item,idx)=>{
-    item.querySelector(".slot-index").innerText = idx+1;
-  });
-}
+    wmSld.oninput = () => {
+      const val = wmSld.value;
+      wmImg.style.width = val + 'px';
+      localStorage.setItem("seaSaltWMSize", val);
+    };
 
-// ========== 5. 导入图片 ==========
-document.getElementById("imgInput").onchange = e=>{
-  uploadedFiles = Array.from(e.target.files);
-  canvasRoot.innerHTML="";
-  canvasRoot.appendChild(wmWrap); // 确保水印存在
+    // 水印拖动 (interact)
+    interact('#watermarkWrap').draggable({
+      listeners: {
+        move(e) {
+          wmOffsetX += e.dx;
+          wmOffsetY += e.dy;
+          wmWrap.style.left = `calc(50% + ${wmOffsetX}px)`;
+          wmWrap.style.top = `calc(50% + ${wmOffsetY}px)`;
+        }
+      }
+    });
 
-  uploadedFiles.forEach((file, index)=>{
-    const rd = new FileReader();
-    rd
+    window.clearWM = function() {
+      localStorage.removeItem("seaSaltWM");
+      localStorage.removeItem("seaSaltWMSize");
+      wmWrap.style.display = 'none';
+      wmImg.src = '';
+      document.getElementById('wmFile').value = '';
+      wmOffsetX = wmOffsetY = 0;
+      wmWrap.style.left = '50%'; wmWrap.style.top = '50%';
+    };
+
+    // ---------- 核心：横向自适应渲染 (自动根据图片数量调整每个格子宽度) ----------
+    function renderGridFromFiles(files) {
+      // 保留水印元素
+      const wm = document.getElementById('watermarkWrap');
+      canvasRoot.innerHTML = '';
+      canvasRoot.appendChild(wm);  // 水印始终存在
+
+      if (!files || files.length === 0) {
+        // 显示占位提示
+        const emptyHint = document.createElement('div');
+        emptyHint.style.cssText = 'padding:40px;color:#4f7a8c;text-align:center;width:100%;';
+        emptyHint.innerText = '👆 点击“导入图片”开始横向拼图';
+        canvasRoot.appendChild(emptyHint);
+        return;
+      }
+
+      files.forEach((file, idx) => {
+        const slot = document.createElement('div');
+        slot.className = 'grid-slot';
+        slot.setAttribute('data-index', idx);
+        
+        // 序号
+        const indexDiv = document.createElement('div');
+        indexDiv.className = 'slot-index';
+        indexDiv.innerText = idx + 1;
+        slot.appendChild(indexDiv);
+        
+        // 图片
+        const img = document.createElement('img');
+        const url = URL.createObjectURL(file);
+        img.src = url;
+        slot.appendChild(img);
+        
+        // 已售蒙层
+        const soldDiv = document.createElement('div');
+        soldDiv.className = 'sold-overlay';
+        soldDiv.innerHTML = '<span>SOLD</span>';
+        slot.appendChild(soldDiv);
+        
+        // 价格区域
+        const priceWrap = document.createElement('div');
+        priceWrap.className = 'price-wrap';
+        const priceInput = document.createElement('input');
+        priceInput.className = 'slot-price';
+        priceInput.type = 'number';
+        priceInput.value = document.getElementById('globalPrice').value || '99';
+        priceInput.placeholder = '价格';
+        priceWrap.appendChild(priceInput);
+        slot.appendChild(priceWrap);
+        
+        // 工具按钮
+        const tools = document.createElement('div');
+        tools.className = 'slot-tools';
+        tools.innerHTML = `
+          <div class="tool-btn" onclick="toggleSold(this)"><i class="fas fa-tag"></i></div>
+          <div class="tool-btn" onclick="togglePrice(this)"><i class="fas fa-dollar-sign"></i></div>
+        `;
+        slot.appendChild(tools);
+        
+        canvasRoot.appendChild(slot);
+      });
+
+      // 保证所有图片加载后清理blob url? 但截图时需要，保留即可
+      // 应用当前比例类 (已在外部设置)
+      canvasRoot.className = currentRatioClass;
+    }
+
+    // 公开方法：切换已售
+    window.toggleSold = function(btn) {
+      const slot = btn.closest('.grid-slot');
+      if(slot) slot.classList.toggle('is-sold');
+    };
+    window.togglePrice = function(btn) {
+      const slot = btn.closest('.grid-slot');
+      if(slot) slot.classList.toggle('show-price');
+    };
+    window.toggleAllPrice = function() {
+      document.querySelectorAll('.grid-slot').forEach(s => s.classList.toggle('show-price'));
+    };
+    window.toggleAllSold = function() {
+      document.querySelectorAll('.grid-slot').forEach(s => s.classList.toggle('is-sold'));
+    };
+
+    // 导入图片
+    document.getElementById('imgInput').addEventListener('change', function(e) {
+      const files = Array.from(e.target.files);
+      if (!files.length) return;
+      uploadedFiles = files;
+      renderGridFromFiles(uploadedFiles);
+      showToast(`已导入 ${files.length} 张图片，横向自适应`);
+      // 自动触发横向排列 (已经是flex nowrap)
+    });
+
+    // 横向自适应按钮 (其实已经天然自适应，这里可重新确保flex属性)
+    window.applyHorizontalAuto = function() {
+      if (!uploadedFiles.length) {
+        showToast('请先导入图片');
+        return;
+      }
+      // 确保父容器flex nowrap, 并且格子flex:1 0 auto
+      canvasRoot.style.display = 'flex';
+      canvasRoot.style.flexWrap = 'nowrap';
+      // 重新渲染一下(保证最新)
+      renderGridFromFiles(uploadedFiles);
+      showToast('横向自适应 · 完美贴合');
+    };
+
+    // 统一价格应用到所有格子
+    function syncGlobalPrice() {
+      const price = document.getElementById('globalPrice').value;
+      document.querySelectorAll('.slot-price').forEach(inp => inp.value = price);
+    }
+
+    // 拖拽互换 (横向同样支持)
+    canvasRoot.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('#watermarkWrap')) return;
+      const slot = e.target.closest('.grid-slot');
+      if (!slot) return;
+      
+      let startX = e.clientX, startY = e.clientY;
+      const originalIdx = Array.from(canvasRoot.children).indexOf(slot);
+      slot.style.zIndex = '100';
+      
+      const onMove = (moveEvent) => {
+        const dx = moveEvent.clientX - startX;
+        const dy = moveEvent.clientY - startY;
+        slot.style.transform = `translate(${dx}px, ${dy}px)`;
+      };
+      const onUp = (upEvent) => {
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        slot.style.zIndex = '';
+        slot.style.transform = '';
+        
+        const dropElem = document.elementFromPoint(upEvent.clientX, upEvent.clientY)?.closest('.grid-slot');
+        if (dropElem && dropElem !== slot) {
+          const targetIdx = Array.from(canvasRoot.children).indexOf(dropElem);
+          if (originalIdx < targetIdx) {
+            canvasRoot.insertBefore(slot, dropElem.nextSibling);
+          } else {
+            canvasRoot.insertBefore(slot, dropElem);
+          }
+          // 更新序号
+          document.querySelectorAll('.grid-slot .slot-index').forEach((el, i) => el.innerText = i+1);
+        }
+      };
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+    });
+
+    // 合成下载
+    window.downloadAll = function() {
+      syncGlobalPrice(); // 确保价格统一
+      const root = document.getElementById('puzzle-canvas-root');
+      if (!root.querySelector('.grid-slot')) {
+        showToast('没有图片可合成');
+        return;
+      }
+      showToast('生成中…', 800);
+      
+      html2canvas(root, {
+        backgroundColor: '#A8D1E7',
+        scale: 1.8,
+        allowTaint: false,
+        useCORS: true,
+        logging: false
+      }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = `seasalt_${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        showToast('✅ 拼图已保存');
+      }).catch(err => {
+        showToast('截图失败');
+        console.warn(err);
+      });
+    };
+
+    // 初始占位
+    renderGridFromFiles([]);
+
+    // 附加: 点击外部关闭下拉
+  })();
+</script>
+</body>
+</html>
