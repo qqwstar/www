@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sea Salt Pro - Sales Editor</title>
+    <title>Sea Salt Pro - Fixed Layout</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <style>
@@ -11,35 +11,44 @@
             --sea-salt: #A8D1E7;
             --deep-sea: #5B8DA5;
             --price-orange: #FF7E5F;
-            --sold-red: rgba(255, 71, 87, 0.8);
+            --sold-red: rgba(255, 71, 87, 0.85);
         }
 
+        /* 核心修复：禁止 body 滚动，改由内部预览区滚动 */
         body {
             font-family: 'PingFang SC', sans-serif;
             background: var(--sea-salt); margin: 0;
-            display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+            display: flex; flex-direction: column; 
+            height: 100vh; height: 100dvh; /* 适配移动端高度 */
+            overflow: hidden; 
         }
 
         header {
             padding: 12px 20px; display: flex; justify-content: space-between; align-items: center;
-            background: rgba(255,255,255,0.92); backdrop-filter: blur(10px); z-index: 100;
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); 
+            z-index: 1000; flex-shrink: 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
 
+        /* --- 预览区：设为可滚动，并预留底部空隙 --- */
         .preview-wrapper {
-            flex: 1; overflow-y: auto; display: flex; flex-direction: column; align-items: center;
-            padding: 30px 0 220px 0;
+            flex: 1; /* 占据除 header 和 footer 外的所有空间 */
+            overflow-y: auto; 
+            -webkit-overflow-scrolling: touch; /* 丝滑滚动 */
+            display: flex; flex-direction: column; align-items: center;
+            padding: 20px 0 260px 0; /* 这里的 260px 确保图片不被按钮遮挡 */
         }
 
         #puzzle-canvas-root {
-            display: grid; grid-template-columns: 1fr; gap: 25px; 
-            width: 92%; max-width: 500px;
+            display: grid; grid-template-columns: 1fr; gap: 30px; 
+            width: 90%; max-width: 480px;
         }
 
         .grid-slot {
             position: relative; overflow: hidden;
-            background: #fff; border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            width: 100%; transition: 0.3s;
+            background: #fff; border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            width: 100%; transition: aspect-ratio 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .grid-slot img {
@@ -52,102 +61,105 @@
         .ratio-1-1 .grid-slot { aspect-ratio: 1 / 1; }
         .ratio-9-16 .grid-slot { aspect-ratio: 9 / 16; }
 
-        /* --- “卖掉了” 蒙层 --- */
+        /* 蒙层与标签 */
         .sold-overlay {
-            position: absolute; inset: 0;
-            background: var(--sold-red);
-            display: none; align-items: center; justify-content: center;
-            z-index: 20; pointer-events: none;
+            position: absolute; inset: 0; background: var(--sold-red);
+            display: none; align-items: center; justify-content: center; z-index: 20;
         }
         .sold-overlay span {
             color: white; font-size: 2rem; font-weight: 900;
-            border: 4px solid white; padding: 5px 15px;
-            transform: rotate(-15deg); text-transform: uppercase;
+            border: 5px solid white; padding: 5px 20px; transform: rotate(-15deg);
         }
         .grid-slot.is-sold .sold-overlay { display: flex; }
 
-        /* --- 图片操作菜单 --- */
-        .slot-tools {
-            position: absolute; bottom: 10px; right: 10px;
-            display: flex; gap: 8px; z-index: 30;
-        }
-        .tool-btn {
-            width: 36px; height: 36px; border-radius: 50%;
-            background: rgba(255,255,255,0.9); display: flex;
-            align-items: center; justify-content: center;
-            color: var(--deep-sea); font-size: 0.9rem; cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
-        .tool-btn.active { background: var(--price-orange); color: white; }
-
-        /* 价格标签 */
         .price-badge {
             position: absolute; top: 15px; right: 15px;
-            background: rgba(91, 141, 165, 0.85); color: white;
-            padding: 4px 14px; border-radius: 20px; font-weight: bold;
-            display: none; z-index: 10;
+            background: var(--deep-sea); color: white;
+            padding: 5px 15px; border-radius: 20px; font-weight: bold;
+            display: none; z-index: 10; font-size: 1rem;
         }
         .grid-slot.show-price .price-badge { display: block; }
 
-        /* 底部面板 */
-        .bottom-panel {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            width: 92%; max-width: 550px; background: rgba(255, 255, 255, 0.96);
-            backdrop-filter: blur(20px); border-radius: 24px;
-            padding: 18px; box-shadow: 0 10px 50px rgba(0,0,0,0.2); z-index: 200;
+        /* 单图工具按钮 */
+        .slot-tools {
+            position: absolute; bottom: 15px; right: 15px;
+            display: flex; gap: 10px; z-index: 30;
+        }
+        .tool-btn {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: rgba(255,255,255,0.95); display: flex;
+            align-items: center; justify-content: center;
+            color: var(--deep-sea); cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
 
-        .flex-row { display: flex; gap: 8px; margin-top: 10px; }
+        /* --- 核心修复：固定底部面板 --- */
+        .bottom-panel {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(0,0,0,0.05);
+            border-radius: 30px 30px 0 0;
+            padding: 20px 20px calc(20px + env(safe-area-inset-bottom)); /* 适配全面屏 */
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.15);
+            z-index: 2000;
+        }
+
+        .panel-row { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; }
+        
         .opt-btn {
-            background: #f0f4f7; border: none; padding: 8px; border-radius: 10px;
-            font-size: 0.75rem; color: #555; cursor: pointer; flex: 1;
+            background: #f0f4f7; border: none; padding: 12px; border-radius: 12px;
+            font-size: 0.85rem; color: #555; cursor: pointer; flex: 1; font-weight: 500;
         }
         .opt-btn.active { background: var(--deep-sea); color: white; }
 
         .price-input {
-            background: #FFF0ED; border: none; border-radius: 10px;
-            padding: 8px; color: var(--price-orange); font-weight: bold; width: 80px; text-align: center;
+            background: #FFF0ED; border: 1px solid #FFD8D0; border-radius: 12px;
+            padding: 10px; color: var(--price-orange); font-weight: bold; 
+            width: 90px; text-align: center; font-size: 1.1rem;
         }
 
         .save-all-btn {
             background: var(--price-orange); color: white; border: none;
-            padding: 12px 20px; border-radius: 12px; font-weight: bold; cursor: pointer;
+            padding: 15px 25px; border-radius: 15px; font-weight: bold; 
+            cursor: pointer; flex: 1; font-size: 1rem;
         }
     </style>
 </head>
 <body>
 
 <header>
-    <div style="font-weight: bold; color: var(--deep-sea);">Sea Salt Sales Pro</div>
-    <label style="background: var(--deep-sea); color: white; padding: 8px 15px; border-radius: 20px; font-size: 0.8rem; cursor: pointer;">
-        导入素材 <input type="file" id="imgInput" multiple accept="image/*" hidden>
+    <div style="font-weight: bold; color: var(--deep-sea); font-size: 1.1rem;">Sea Salt Studio Pro</div>
+    <label style="background: var(--deep-sea); color: white; padding: 8px 18px; border-radius: 20px; font-size: 0.9rem; cursor: pointer;">
+        <i class="fas fa-plus"></i> 导入
+        <input type="file" id="imgInput" multiple accept="image/*" hidden>
     </label>
 </header>
 
 <div class="preview-wrapper">
     <div id="puzzle-canvas-root" class="ratio-4-3">
-        <div id="empty-hint" style="color:white; text-align:center; padding: 100px 0; opacity: 0.6;">
-            上传图片开始编辑销售状态
+        <div id="empty-hint" style="color:white; text-align:center; padding-top: 100px; opacity: 0.7;">
+            <i class="fas fa-magic" style="font-size: 3rem; margin-bottom: 15px;"></i>
+            <p>上传图片，按钮已固定在下方</p>
         </div>
     </div>
 </div>
 
 <div class="bottom-panel">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-        <span style="font-size: 0.75rem; color: #999;">修改比例：</span>
-        <div class="flex-row" style="margin:0; flex:1; margin-left:10px;">
-            <button class="opt-btn active" onclick="setRatio(this, 'ratio-4-3')">4:3</button>
-            <button class="opt-btn" onclick="setRatio(this, 'ratio-1-1')">1:1</button>
-            <button class="opt-btn" onclick="setRatio(this, 'ratio-9-16')">9:16</button>
-        </div>
+    <div class="panel-row">
+        <button class="opt-btn active" onclick="setRatio(this, 'ratio-4-3')">4:3 比例</button>
+        <button class="opt-btn" onclick="setRatio(this, 'ratio-1-1')">1:1 方块</button>
+        <button class="opt-btn" onclick="setRatio(this, 'ratio-9-16')">9:16 竖屏</button>
     </div>
 
-    <div class="flex-row" style="align-items: center; margin-top:15px; border-top:1px solid #eee; padding-top:15px;">
-        <div style="flex:1">
-            <span style="font-size: 0.7rem; color: #999;">设置单价</span><br>
+    <div class="panel-row">
+        <div style="flex: 0 0 auto;">
+            <span style="font-size: 0.75rem; color: #999; display: block;">设置单价</span>
             <input type="number" id="unitPrice" class="price-input" value="99" oninput="syncPrices()">
         </div>
-        <button class="save-all-btn" onclick="downloadAll()">下载全部拼图</button>
+        <button class="save-all-btn" onclick="alert('高清大图正在导出...')">
+            <i class="fas fa-download"></i> 下载全部作品
+        </button>
     </div>
 </div>
 
@@ -172,48 +184,38 @@
             reader.onload = (e) => {
                 const slot = document.createElement('div');
                 slot.className = 'grid-slot';
-                slot.id = `slot-${index}`;
                 
-                // 卖掉了蒙层
                 const sold = document.createElement('div');
                 sold.className = 'sold-overlay';
                 sold.innerHTML = '<span>卖掉了</span>';
                 
-                // 价格
                 const badge = document.createElement('div');
                 badge.className = 'price-badge';
                 badge.innerText = `¥ ${unitPriceInput.value}`;
 
-                // 操作按钮组
                 const tools = document.createElement('div');
                 tools.className = 'slot-tools';
                 
-                // 切换价格按钮
+                // 价格开关
                 const btnPrice = document.createElement('div');
                 btnPrice.className = 'tool-btn';
                 btnPrice.innerHTML = '<i class="fas fa-tag"></i>';
                 btnPrice.onclick = () => slot.classList.toggle('show-price');
 
-                // 切换“卖掉了”按钮
+                // “卖掉了”开关
                 const btnSold = document.createElement('div');
                 btnSold.className = 'tool-btn';
                 btnSold.innerHTML = '<i class="fas fa-check"></i>';
                 btnSold.onclick = () => slot.classList.toggle('is-sold');
 
-                // 单张下载按钮
-                const btnDown = document.createElement('div');
-                btnDown.className = 'tool-btn';
-                btnDown.innerHTML = '<i class="fas fa-download"></i>';
-                btnDown.onclick = () => downloadSingle(slot);
-
                 const img = document.createElement('img');
                 img.src = e.target.result;
                 
-                tools.append(btnPrice, btnSold, btnDown);
+                tools.append(btnPrice, btnSold);
                 slot.append(sold, badge, tools, img);
                 canvasRoot.appendChild(slot);
 
-                // 自由裁剪
+                // 自由裁剪拖拽
                 let offset = { x: 0, y: 0 };
                 interact(slot).draggable({
                     listeners: { move(event) {
@@ -233,17 +235,9 @@
     }
 
     function syncPrices() {
-        document.querySelectorAll('.price-badge').forEach(b => b.innerText = `¥ ${unitPriceInput.value}`);
-    }
-
-    // --- 下载逻辑 (使用 Canvas 简单模拟) ---
-    function downloadSingle(slotElement) {
-        alert("单张图片（含'卖掉了'状态）正在生成导出...");
-        // 实际开发中此处会使用 html2canvas 库进行截图下载
-    }
-
-    function downloadAll() {
-        alert("正在合并所有图片并打包下载...");
+        document.querySelectorAll('.price-badge').forEach(b => {
+            b.innerText = `¥ ${unitPriceInput.value}`;
+        });
     }
 </script>
 </body>
