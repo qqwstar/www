@@ -17,13 +17,24 @@
 
         body {
             font-family: 'PingFang SC', sans-serif;
-            background: var(--sea-salt); margin: 0;
-            display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+            background: var(--sea-salt); 
+            margin: 0;
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            overflow: hidden;
+            /* 关键修复：给body增加底部安全区内边距，防止被小黑条遮挡 */
+            padding-bottom: env(safe-area-inset-bottom);
         }
 
         header {
-            padding: 12px 20px; display: flex; justify-content: space-between; align-items: center;
-            background: rgba(255,255,255,0.95); z-index: 1000; flex-shrink: 0;
+            padding: 12px 20px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            background: rgba(255,255,255,0.95); 
+            z-index: 1000; 
+            flex-shrink: 0;
         }
 
         .ratio-dropdown {
@@ -31,18 +42,28 @@
             display: inline-block;
         }
         .ratio-select {
-            background: var(--deep-sea); color: white; padding: 6px 25px 6px 15px; border-radius: 15px; font-size: 0.8rem;
-            cursor: pointer; position: relative;
+            background: var(--deep-sea); color: white; 
+            padding: 6px 25px 6px 15px; 
+            border-radius: 15px; 
+            font-size: 0.8rem;
+            cursor: pointer; 
+            position: relative;
         }
         .ratio-select::after {
-            content: '▼'; font-size: 0.6rem; position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+            content: '▼'; font-size: 0.6rem; 
+            position: absolute; right: 8px; top: 50%; 
+            transform: translateY(-50%);
         }
         .ratio-options {
-            position: absolute; top: 100%; right: 0; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            list-style: none; padding: 8px 0; margin: 5px 0 0 0; min-width: 120px; display: none; z-index: 1001;
+            position: absolute; top: 100%; right: 0; 
+            background: white; border-radius: 8px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            list-style: none; padding: 8px 0; margin: 5px 0 0 0; 
+            min-width: 120px; display: none; z-index: 1001;
         }
         .ratio-options li {
-            padding: 8px 15px; cursor: pointer; font-size: 0.8rem; color: #333;
+            padding: 8px 15px; cursor: pointer; 
+            font-size: 0.8rem; color: #333;
         }
         .ratio-options li:hover { background: #f0f4f7; }
         .ratio-options li.active {
@@ -51,21 +72,22 @@
         .ratio-dropdown.open .ratio-options { display: block; }
 
         .preview-wrapper {
-            flex: 1; overflow-y: auto; display: flex; flex-direction: column; align-items: center;
-            padding: 60px 0 380px 0;
+            flex: 1; overflow-y: auto; 
+            display: flex; flex-direction: column; 
+            align-items: center;
+            padding: 20px 0 20px 0; /* 减少顶部和底部预览区内边距，给面板腾出空间 */
         }
 
         #puzzle-canvas-root {
             display: grid;
             gap: 10px; width: 94%; max-width: 900px;
             background: var(--sea-salt);
-            position:relative;
+            position: relative;
         }
 
         /* 全局水印容器 */
         #watermarkWrap{
-            position:absolute;
-            left:50%;top:50%;
+            position:absolute; left:50%;top:50%;
             transform:translate(-50%,-50%);
             pointer-events:none;
             z-index:50;
@@ -76,15 +98,22 @@
         }
 
         .grid-slot {
-            position: relative; overflow: hidden; background: #fff; border-radius: 8px; width: 100%;
+            position: relative; overflow: hidden; 
+            background: #fff; border-radius: 8px; 
+            width: 100%;
         }
         .slot-index {
-            position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.5);
-            color: white; width: 24px; height: 24px; border-radius: 50%; display: flex;
-            align-items: center; justify-content: center; font-size: 0.8rem; z-index: 25;
+            position: absolute; top: 10px; left: 10px; 
+            background: rgba(0,0,0,0.5); color: white;
+            width: 24px; height: 24px; border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 0.8rem; z-index: 25;
         }
 
-        .grid-slot img { position: absolute; width: 100%; height: 100%; object-fit: cover; }
+        .grid-slot img { 
+            position: absolute; width: 100%; height: 100%; 
+            object-fit: cover; 
+        }
 
         .ratio-1-1 .grid-slot { aspect-ratio: 1 / 1; }
         .ratio-3-4 .grid-slot { aspect-ratio: 3 / 4; }
@@ -115,42 +144,62 @@
 
         .slot-tools { position: absolute; bottom: 8px; right: 8px; display: flex; gap: 5px; z-index: 30; }
         .tool-btn {
-            width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.9);
-            display: flex; align-items: center; justify-content: center; color: var(--deep-sea); cursor: pointer;
+            width: 32px; height: 32px; border-radius: 50%; 
+            background: rgba(255,255,255,0.9);
+            display: flex; align-items: center; justify-content: center; 
+            color: var(--deep-sea); cursor: pointer;
         }
 
         #toast {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.8); color: white; padding: 15px 25px;
-            border-radius: 12px; z-index: 9999; display: none; text-align: 1.6;
+            position: fixed; top: 50%; left: 50%; 
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8); color: white; 
+            padding: 15px 25px; border-radius: 12px; 
+            z-index: 9999; display: none; 
+            text-align: center; line-height: 1.6;
         }
 
+        /* 关键修复：压缩底部面板高度和间距 */
         .bottom-panel {
-            position: fixed; bottom: 0; left: 0; right: 0; background: #fff; padding: 20px;
-            border-radius: 24px 24px 0 0; box-shadow: 0 -10px 30px rgba(0,0,0,0.1); z-index: 2000;
+            position: fixed; bottom: 0; left: 0; right: 0; 
+            background: #fff; 
+            /* 关键：减小上下内边距，防止溢出 */
+            padding: 12px 15px 15px; 
+            border-radius: 24px 24px 0 0; 
+            box-shadow: 0 -10px 30px rgba(0,0,0,0.1); 
+            z-index: 2000;
+            /* 确保不会被遮挡 */
+            padding-bottom: calc(20px + env(safe-area-inset-bottom));
         }
 
         .ctrl-row{
-            display:flex; gap:8px; align-items:center; margin-bottom:12px;
+            display:flex; gap:8px; align-items:center; 
+            margin-bottom:10px; /* 减小行间距 */
             flex-wrap:wrap;
         }
         .ctrl-row input{
-            padding:8px;border:1px solid #eee;border-radius:8px;
+            padding:6px 8px;border:1px solid #eee;border-radius:8px;
+            font-size: 0.9rem;
         }
         .ctrl-row button{
-            padding:8px 12px;border:none;background:var(--deep-sea);color:white;border-radius:8px;
+            padding:6px 10px;border:none;background:var(--deep-sea);
+            color:white;border-radius:8px;
+            font-size: 0.9rem;
         }
         .size-slider{
-            width:100px;
+            flex:1; /* 让滑块占满剩余空间 */
+            height: 12px;
         }
 
         .price-line{
-            display: flex; gap: 10px; align-items: center; margin-top:10px;
+            display: flex; gap: 10px; align-items: center; 
+            margin-top:5px;
         }
         .price-line label{color:#333;font-size:0.9rem;}
         .save-btn {
-            flex: 1; padding: 12px; border: none; border-radius: 10px;
-            background: var(--price-orange); color: white; font-weight: bold;
+            flex: 1; padding: 10px; border: none; 
+            border-radius: 10px; background: var(--price-orange); 
+            color: white; font-weight: bold; font-size: 1rem;
         }
     </style>
 </head>
@@ -177,7 +226,6 @@
 
 <div class="preview-wrapper">
     <div id="puzzle-canvas-root" class="ratio-1-1">
-        <!-- 全局水印 -->
         <div id="watermarkWrap" style="display:none;">
             <img id="globalWatermark" src="">
         </div>
@@ -194,14 +242,17 @@
         <button onclick="autoGrid()" style="background:#999">自动排版</button>
     </div>
 
-    <!-- 水印控制：持久化、大小调节 -->
+    <!-- 水印控制 -->
     <div class="ctrl-row">
         <label>水印:</label>
-        <input type="file" id="waterInput" accept="image/*">
-        <input class="size-slider" type="range" id="wmSize" min="50" max="400" value="180">
+        <input type="file" id="waterInput" accept="image/*" style="flex:1">
         <button onclick="clearWatermark()" style="background:#777">移除</button>
     </div>
+    <div class="ctrl-row">
+         <input class="size-slider" type="range" id="wmSize" min="50" max="400" value="180">
+    </div>
 
+    <!-- 单价区域 -->
     <div class="price-line">
         <label>单价:</label>
         <input type="number" id="globalPrice" style="width:70px; padding:10px; border:1px solid #eee; border-radius:8px;" value="99">
@@ -247,11 +298,14 @@
             localStorage.setItem("gridWatermark",watermarkBase64);
             wmImg.src = watermarkBase64;
             wmWrap.style.display = "block";
+            // 修复：重新添加水印元素到DOM，防止上传后找不到
+            if(canvasRoot.contains(wmWrap)) canvasRoot.removeChild(wmWrap);
+            canvasRoot.appendChild(wmWrap);
         }
         r.readAsDataURL(f);
     });
 
-    // 水印大小实时调节 + 记忆
+    // 水印大小调节
     wmSizeSlider.oninput = ()=>{
         let s = wmSizeSlider.value;
         wmImg.style.width = s+"px";
@@ -312,68 +366,13 @@
     document.getElementById("imgInput").addEventListener("change",function(){
         uploadedFiles = Array.from(this.files);
         canvasRoot.innerHTML = "";
-        // 重新放回水印
+        
+        // 修复：重新添加水印，防止清空图片时水印也没了
         canvasRoot.appendChild(wmWrap);
+        if(watermarkBase64) wmWrap.style.display = "block";
 
         uploadedFiles.forEach(file=>{
             const reader = new FileReader();
             reader.onload = e=>{
                 const slot = document.createElement("div");
-                slot.className="grid-slot";
-                slot.innerHTML=`
-                    <div class="slot-index"></div>
-                    <div class="sold-overlay"><span>卖掉了</span></div>
-                    <div class="price-wrap">
-                        <input class="slot-price" value="${globalPrice.value}" placeholder="价格">
-                    </div>
-                    <div class="slot-tools">
-                        <div class="tool-btn" onclick="this.closest('.grid-slot').classList.toggle('show-price')"><i class="fas fa-tag"></i></div>
-                        <div class="tool-btn" onclick="this.closest('.grid-slot').classList.toggle('is-sold')"><i class="fas fa-check"></i></div>
-                    </div>
-                    <img src="${e.target.result}">
-                `;
-                canvasRoot.appendChild(slot);
-
-                const img = slot.querySelector("img");
-                let ox=0,oy=0;
-                interact(img).draggable({
-                    listeners:{
-                        move(ev){
-                            ox+=ev.dx; oy+=ev.dy;
-                            img.style.objectPosition = `${50+ox/2}% ${50+oy/2}%`;
-                        }
-                    }
-                });
-                reIndexVisual();
-            }
-            reader.readAsDataURL(file);
-        });
-    });
-
-    async function downloadPuzzle() {
-        if(!canvasRoot.children.length) return alert("先上传图片");
-        showToast('<i class="fas fa-spin fa-spinner"></i> 生成整张合成图...');
-
-        const tools = document.querySelectorAll(".slot-tools");
-        tools.forEach(t=>t.style.display="none");
-
-        try{
-            const cvs = await html2canvas(canvasRoot,{
-                useCORS:true,
-                backgroundColor:"#A8D1E7",
-                scale:2
-            });
-            const a = document.createElement("a");
-            a.download = "海盐合成整图_"+Date.now()+".png";
-            a.href = cvs.toDataURL("image/png");
-            a.click();
-            showToast("✅ 整张合成图(含水印)下载成功");
-        }catch(err){
-            showToast("❌ 下载失败");
-        }finally{
-            tools.forEach(t=>t.style.display="flex");
-        }
-    }
-</script>
-</body>
-</html>
+               
