@@ -1,378 +1,458 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sea Salt Grid - With Downloader</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
-    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-    <style>
-        :root {
-            --sea-salt: #A8D1E7;
-            --deep-sea: #5B8DA5;
-            --price-orange: #FF7E5F;
-            --sold-red: rgba(255, 71, 87, 0.85);
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Sea Salt Grid</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+<style>
+:root{
+  --sea-salt:#A8D1E7;
+  --deep-sea:#5B8DA5;
+  --price-orange:#FF7E5F;
+  --sold-red:rgba(255,71,87,0.85);
+}
+*{box-sizing:border-box;}
+body{
+  font-family:PingFang SC,sans-serif;
+  background:var(--sea-salt);
+  margin:0;
+  display:flex;
+  flex-direction:column;
+  height:100vh;
+  overflow:hidden;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+header{
+  padding:12px 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  background:rgba(255,255,255,0.95);
+  z-index:1000;
+  flex-shrink:0;
+}
+/* 修复比例下拉交互 */
+.ratio-dropdown{position:relative;display:inline-block;}
+.ratio-select{
+  background:var(--deep-sea);
+  color:#fff;
+  padding:6px 24px 6px 14px;
+  border-radius:15px;
+  font-size:0.8rem;
+  cursor:pointer;
+  position:relative;
+}
+.ratio-select::after{
+  content:"▼";
+  font-size:0.6rem;
+  position:absolute;
+  right:8px;top:50%;
+  transform:translateY(-50%);
+}
+.ratio-options{
+  position:absolute;
+  top:calc(100% + 6px);
+  right:0;
+  background:#fff;
+  border-radius:8px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.15);
+  list-style:none;
+  padding:8px 0;
+  margin:0;
+  min-width:120px;
+  display:none;
+  z-index:2000;
+}
+.ratio-options li{
+  padding:9px 16px;
+  cursor:pointer;
+  font-size:0.8rem;
+  color:#333;
+}
+.ratio-options li:hover{background:#f0f4f7;}
+.ratio-options li.active{background:var(--deep-sea);color:#fff;}
+.ratio-dropdown.open .ratio-options{display:block;}
 
-        body {
-            font-family: 'PingFang SC', sans-serif;
-            background: var(--sea-salt); 
-            margin: 0;
-            display: flex; 
-            flex-direction: column; 
-            height: 100vh; 
-            overflow: hidden;
-            /* 关键修复：给body增加底部安全区内边距，防止被小黑条遮挡 */
-            padding-bottom: env(safe-area-inset-bottom);
-        }
+.preview-wrapper{
+  flex:1;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:20px 0 20px;
+}
+/* 拼图无缝 取消gap */
+#puzzle-canvas-root{
+  display:grid;
+  gap:0px;
+  width:94%;
+  max-width:900px;
+  background:var(--sea-salt);
+  position:relative;
+}
+/* 可拖动全局水印 */
+#watermarkWrap{
+  position:absolute;
+  left:50%;top:50%;
+  transform:translate(-50%,-50%);
+  z-index:60;
+  cursor:grab;
+}
+#watermarkWrap:active{cursor:grabbing;}
+#globalWatermark{
+  user-select:none;
+  pointer-events:none;
+  max-width:400px;
+}
+.grid-slot{
+  position:relative;
+  overflow:hidden;
+  background:#fff;
+  width:100%;
+}
+.slot-index{
+  position:absolute;
+  top:10px;left:10px;
+  background:rgba(0,0,0,0.5);
+  color:#fff;
+  width:24px;height:24px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;justify-content:center;
+  font-size:0.8rem;
+  z-index:25;
+}
+.grid-slot img{
+  position:absolute;
+  width:100%;height:100%;
+  object-fit:cover;
+}
+/* 比例类 */
+.ratio-1-1 .grid-slot{aspect-ratio:1/1;}
+.ratio-3-4 .grid-slot{aspect-ratio:3/4;}
+.ratio-9-16 .grid-slot{aspect-ratio:9/16;}
+.ratio-4-3 .grid-slot{aspect-ratio:4/3;}
+.ratio-16-9 .grid-slot{aspect-ratio:16/9;}
 
-        header {
-            padding: 12px 20px; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center;
-            background: rgba(255,255,255,0.95); 
-            z-index: 1000; 
-            flex-shrink: 0;
-        }
+.sold-overlay{
+  position:absolute;inset:0;
+  background:var(--sold-red);
+  display:none;
+  align-items:center;justify-content:center;
+  z-index:20;
+}
+.sold-overlay span{
+  color:#fff;font-size:1.2rem;font-weight:bold;
+  border:2px solid #fff;padding:2px 8px;
+  transform:rotate(-15deg);
+}
+.grid-slot.is-sold .sold-overlay{display:flex;}
 
-        .ratio-dropdown {
-            position: relative;
-            display: inline-block;
-        }
-        .ratio-select {
-            background: var(--deep-sea); color: white; 
-            padding: 6px 25px 6px 15px; 
-            border-radius: 15px; 
-            font-size: 0.8rem;
-            cursor: pointer; 
-            position: relative;
-        }
-        .ratio-select::after {
-            content: '▼'; font-size: 0.6rem; 
-            position: absolute; right: 8px; top: 50%; 
-            transform: translateY(-50%);
-        }
-        .ratio-options {
-            position: absolute; top: 100%; right: 0; 
-            background: white; border-radius: 8px; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            list-style: none; padding: 8px 0; margin: 5px 0 0 0; 
-            min-width: 120px; display: none; z-index: 1001;
-        }
-        .ratio-options li {
-            padding: 8px 15px; cursor: pointer; 
-            font-size: 0.8rem; color: #333;
-        }
-        .ratio-options li:hover { background: #f0f4f7; }
-        .ratio-options li.active {
-            background: var(--deep-sea); color: white;
-        }
-        .ratio-dropdown.open .ratio-options { display: block; }
-
-        .preview-wrapper {
-            flex: 1; overflow-y: auto; 
-            display: flex; flex-direction: column; 
-            align-items: center;
-            padding: 20px 0 20px 0; /* 减少顶部和底部预览区内边距，给面板腾出空间 */
-        }
-
-        #puzzle-canvas-root {
-            display: grid;
-            gap: 10px; width: 94%; max-width: 900px;
-            background: var(--sea-salt);
-            position: relative;
-        }
-
-        /* 全局水印容器 */
-        #watermarkWrap{
-            position:absolute; left:50%;top:50%;
-            transform:translate(-50%,-50%);
-            pointer-events:none;
-            z-index:50;
-        }
-        #globalWatermark{
-            max-width:200px;
-            user-select:none;
-        }
-
-        .grid-slot {
-            position: relative; overflow: hidden; 
-            background: #fff; border-radius: 8px; 
-            width: 100%;
-        }
-        .slot-index {
-            position: absolute; top: 10px; left: 10px; 
-            background: rgba(0,0,0,0.5); color: white;
-            width: 24px; height: 24px; border-radius: 50%; 
-            display: flex; align-items: center; justify-content: center; 
-            font-size: 0.8rem; z-index: 25;
-        }
-
-        .grid-slot img { 
-            position: absolute; width: 100%; height: 100%; 
-            object-fit: cover; 
-        }
-
-        .ratio-1-1 .grid-slot { aspect-ratio: 1 / 1; }
-        .ratio-3-4 .grid-slot { aspect-ratio: 3 / 4; }
-        .ratio-9-16 .grid-slot { aspect-ratio: 9 / 16; }
-        .ratio-4-3 .grid-slot { aspect-ratio: 4 / 3; }
-        .ratio-16-9 .grid-slot { aspect-ratio: 16 / 9; }
-
-        .sold-overlay {
-            position: absolute; inset: 0; background: var(--sold-red);
-            display: none; align-items: center; justify-content: center; z-index: 20;
-        }
-        .sold-overlay span {
-            color: white; font-size: 1.2rem; font-weight: bold;
-            border: 2px solid white; padding: 2px 8px; transform: rotate(-15deg);
-        }
-        .grid-slot.is-sold .sold-overlay { display: flex; }
-
-        .price-wrap{
-            position: absolute; top:10px; right:10px;
-            z-index:12; display:none;
-        }
-        .grid-slot.show-price .price-wrap{display:block;}
-        .slot-price{
-            width:70px; border:none; padding:3px 6px;
-            border-radius:6px; background:var(--deep-sea); color:#fff;
-            text-align:right; outline:none;
-        }
-
-        .slot-tools { position: absolute; bottom: 8px; right: 8px; display: flex; gap: 5px; z-index: 30; }
-        .tool-btn {
-            width: 32px; height: 32px; border-radius: 50%; 
-            background: rgba(255,255,255,0.9);
-            display: flex; align-items: center; justify-content: center; 
-            color: var(--deep-sea); cursor: pointer;
-        }
-
-        #toast {
-            position: fixed; top: 50%; left: 50%; 
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.8); color: white; 
-            padding: 15px 25px; border-radius: 12px; 
-            z-index: 9999; display: none; 
-            text-align: center; line-height: 1.6;
-        }
-
-        /* 关键修复：压缩底部面板高度和间距 */
-        .bottom-panel {
-            position: fixed; bottom: 0; left: 0; right: 0; 
-            background: #fff; 
-            /* 关键：减小上下内边距，防止溢出 */
-            padding: 12px 15px 15px; 
-            border-radius: 24px 24px 0 0; 
-            box-shadow: 0 -10px 30px rgba(0,0,0,0.1); 
-            z-index: 2000;
-            /* 确保不会被遮挡 */
-            padding-bottom: calc(20px + env(safe-area-inset-bottom));
-        }
-
-        .ctrl-row{
-            display:flex; gap:8px; align-items:center; 
-            margin-bottom:10px; /* 减小行间距 */
-            flex-wrap:wrap;
-        }
-        .ctrl-row input{
-            padding:6px 8px;border:1px solid #eee;border-radius:8px;
-            font-size: 0.9rem;
-        }
-        .ctrl-row button{
-            padding:6px 10px;border:none;background:var(--deep-sea);
-            color:white;border-radius:8px;
-            font-size: 0.9rem;
-        }
-        .size-slider{
-            flex:1; /* 让滑块占满剩余空间 */
-            height: 12px;
-        }
-
-        .price-line{
-            display: flex; gap: 10px; align-items: center; 
-            margin-top:5px;
-        }
-        .price-line label{color:#333;font-size:0.9rem;}
-        .save-btn {
-            flex: 1; padding: 10px; border: none; 
-            border-radius: 10px; background: var(--price-orange); 
-            color: white; font-weight: bold; font-size: 1rem;
-        }
-    </style>
+.price-wrap{
+  position:absolute;top:10px;right:10px;
+  z-index:12;display:none;
+}
+.grid-slot.show-price .price-wrap{display:block;}
+.slot-price{
+  width:70px;border:none;padding:3px 6px;
+  border-radius:6px;
+  background:var(--deep-sea);
+  color:#fff;
+  outline:none;
+}
+.slot-tools{
+  position:absolute;bottom:8px;right:8px;
+  display:flex;gap:5px;z-index:30;
+}
+.tool-btn{
+  width:32px;height:32px;
+  border-radius:50%;
+  background:rgba(255,255,255,0.9);
+  display:flex;
+  align-items:center;justify-content:center;
+  color:var(--deep-sea);
+  cursor:pointer;
+}
+#toast{
+  position:fixed;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  background:rgba(0,0,0,0.8);
+  color:#fff;
+  padding:15px 25px;
+  border-radius:12px;
+  z-index:9999;
+  display:none;
+}
+.bottom-panel{
+  position:fixed;
+  left:0;right:0;bottom:0;
+  background:#fff;
+  padding:12px 15px;
+  padding-bottom:calc(15px + env(safe-area-inset-bottom));
+  border-radius:24px 24px 0 0;
+  box-shadow:0 -6px 20px rgba(0,0,0,0.08);
+  z-index:200;
+}
+.ctrl-row{
+  display:flex;gap:8px;
+  align-items:center;
+  margin-bottom:10px;
+  flex-wrap:wrap;
+}
+.ctrl-row input{padding:6px 8px;border:1px solid #eee;border-radius:8px;}
+.ctrl-row button{padding:6px 10px;border:none;background:var(--deep-sea);color:#fff;border-radius:8px;}
+.size-slider{width:110px;}
+.price-line{display:flex;gap:10px;align-items:center;}
+.save-btn{
+  flex:1;padding:10px;border:none;
+  border-radius:10px;
+  background:var(--price-orange);
+  color:#fff;font-weight:bold;
+}
+</style>
 </head>
 <body>
-
 <header>
-    <b style="color: var(--deep-sea);">Sea Salt Grid</b>
-    <div class="ratio-dropdown" id="ratioDropdown">
-        <div class="ratio-select" onclick="toggleRatioDropdown()">1:1</div>
-        <ul class="ratio-options" id="ratioOptions">
-            <li data-ratio="ratio-1-1" class="active">1:1</li>
-            <li data-ratio="ratio-3-4">3:4</li>
-            <li data-ratio="ratio-9-16">9:16</li>
-            <li data-ratio="ratio-4-3">4:3</li>
-            <li data-ratio="ratio-16-9">16:9</li>
-        </ul>
-    </div>
-    <label style="background: var(--deep-sea); color: white; padding: 6px 15px; border-radius: 15px; font-size: 0.8rem;">
-        导入图片 <input type="file" id="imgInput" multiple accept="image/*" hidden>
-    </label>
+  <b style="color:var(--deep-sea);">Sea Salt Grid</b>
+  <div class="ratio-dropdown" id="ratioDropdown">
+    <div class="ratio-select" id="ratioToggle">1:1</div>
+    <ul class="ratio-options" id="ratioOpts">
+      <li data-r="ratio-1-1" class="active">1:1</li>
+      <li data-r="ratio-3-4">3:4</li>
+      <li data-r="ratio-9-16">9:16</li>
+      <li data-r="ratio-4-3">4:3</li>
+      <li data-r="ratio-16-9">16:9</li>
+    </ul>
+  </div>
+  <label style="background:var(--deep-sea);color:#fff;padding:6px 14px;border-radius:15px;font-size:0.8rem;">
+    导入图片 <input type="file" id="imgInput" multiple hidden>
+  </label>
 </header>
-
 <div id="toast"></div>
 
 <div class="preview-wrapper">
-    <div id="puzzle-canvas-root" class="ratio-1-1">
-        <div id="watermarkWrap" style="display:none;">
-            <img id="globalWatermark" src="">
-        </div>
+  <div id="puzzle-canvas-root" class="ratio-1-1">
+    <div id="watermarkWrap" style="display:none;">
+      <img id="globalWatermark">
     </div>
+  </div>
 </div>
 
 <div class="bottom-panel">
-    <!-- 行列控制 -->
-    <div class="ctrl-row">
-        <input type="number" id="colInput" placeholder="列" min="1" value="3">
-        <span>×</span>
-        <input type="number" id="rowInput" placeholder="行" min="1" value="3">
-        <button onclick="applyCustomGrid()">应用网格</button>
-        <button onclick="autoGrid()" style="background:#999">自动排版</button>
-    </div>
-
-    <!-- 水印控制 -->
-    <div class="ctrl-row">
-        <label>水印:</label>
-        <input type="file" id="waterInput" accept="image/*" style="flex:1">
-        <button onclick="clearWatermark()" style="background:#777">移除</button>
-    </div>
-    <div class="ctrl-row">
-         <input class="size-slider" type="range" id="wmSize" min="50" max="400" value="180">
-    </div>
-
-    <!-- 单价区域 -->
-    <div class="price-line">
-        <label>单价:</label>
-        <input type="number" id="globalPrice" style="width:70px; padding:10px; border:1px solid #eee; border-radius:8px;" value="99">
-        <button class="save-btn" onclick="downloadPuzzle()">保存整张合成图</button>
-    </div>
+  <div class="ctrl-row">
+    <input type="number" id="colInput" min="1" value="3" placeholder="列">
+    <span>×</span>
+    <input type="number" id="rowInput" min="1" value="3" placeholder="行">
+    <button onclick="applyCustomGrid()">应用网格</button>
+    <button onclick="autoGrid()" style="background:#777;">自动排版</button>
+  </div>
+  <div class="ctrl-row">
+    <label>水印:</label>
+    <input type="file" id="wmFile" accept="image/*">
+    <input class="size-slider" type="range" id="wmSizeSld" min="50" max="400" value="180">
+    <button onclick="clearWM()" style="background:#666;">移除</button>
+  </div>
+  <div class="price-line">
+    <label>单价:</label>
+    <input type="number" id="globalPrice" value="99" style="width:72px;padding:8px;border-radius:8px;border:1px solid #eee;">
+    <button class="save-btn" onclick="downloadAll()">合成下载</button>
+  </div>
 </div>
 
 <script>
-    const canvasRoot = document.getElementById('puzzle-canvas-root');
-    const globalPrice = document.getElementById('globalPrice');
-    const toast = document.getElementById('toast');
-    const ratioDropdown = document.getElementById('ratioDropdown');
-    const ratioOptions = document.getElementById('ratioOptions');
+const canvasRoot = document.getElementById('puzzle-canvas-root');
+const toast = document.getElementById('toast');
+let uploadedFiles = [];
+let currentCols = 3;
 
-    const wmWrap = document.getElementById("watermarkWrap");
-    const wmImg = document.getElementById("globalWatermark");
-    const wmSizeSlider = document.getElementById("wmSize");
+// ========== 修复比例下拉切换 ==========
+const drop = document.getElementById("ratioDropdown");
+const toggleBtn = document.getElementById("ratioToggle");
+const optList = document.querySelectorAll("#ratioOpts li");
 
-    let uploadedFiles = [];
-    let currentCols = 3;
-    let watermarkBase64 = "";
+toggleBtn.onclick = e=>{
+  e.stopPropagation();
+  drop.classList.toggle("open");
+};
+document.addEventListener("click",()=>drop.classList.remove("open"));
+optList.forEach(li=>{
+  li.onclick = (e)=>{
+    e.stopPropagation();
+    optList.forEach(x=>x.classList.remove("active"));
+    li.classList.add("active");
+    toggleBtn.innerText = li.innerText;
+    canvasRoot.className = li.dataset.r;
+    drop.classList.remove("open");
+    reIndexVisual();
+  }
+});
 
-    // 读取本地缓存水印
-    (function loadSavedWatermark(){
-        let saved = localStorage.getItem("gridWatermark");
-        let savedSz = localStorage.getItem("gridWmSize")||180;
-        if(saved){
-            watermarkBase64 = saved;
-            wmImg.src = watermarkBase64;
-            wmImg.style.width = savedSz+"px";
-            wmSizeSlider.value = savedSz;
-            wmWrap.style.display = "block";
-        }
-    })();
+// ========== 水印拖拽 + 本地存储 ==========
+const wmWrap = document.getElementById("watermarkWrap");
+const wmImg = document.getElementById("globalWatermark");
+const wmSld = document.getElementById("wmSizeSld");
+let wmX=0,wmY=0;
 
-    // 水印上传
-    document.getElementById("waterInput").addEventListener("change",e=>{
-        let f = e.target.files[0];
-        if(!f)return;
-        const r = new FileReader();
-        r.onload = ev=>{
-            watermarkBase64 = ev.target.result;
-            localStorage.setItem("gridWatermark",watermarkBase64);
-            wmImg.src = watermarkBase64;
-            wmWrap.style.display = "block";
-            // 修复：重新添加水印元素到DOM，防止上传后找不到
-            if(canvasRoot.contains(wmWrap)) canvasRoot.removeChild(wmWrap);
-            canvasRoot.appendChild(wmWrap);
-        }
-        r.readAsDataURL(f);
-    });
+//读取缓存
+(function loadWM(){
+  let url = localStorage.getItem("saveWM");
+  let sz = localStorage.getItem("wmSz")||180;
+  if(url){
+    wmImg.src = url;
+    wmImg.style.width = sz+"px";
+    wmSld.value = sz;
+    wmWrap.style.display="block";
+  }
+})();
+//上传水印
+document.getElementById("wmFile").onchange = e=>{
+  let f = e.target.files[0];
+  if(!f)return;
+  const rd = new FileReader();
+  rd.onload=ev=>{
+    localStorage.setItem("saveWM",ev.target.result);
+    wmImg.src = ev.target.result;
+    wmWrap.style.display="block";
+  }
+  rd.readAsDataURL(f);
+};
+//水印大小
+wmSld.oninput=()=>{
+  let s=wmSld.value;
+  wmImg.style.width = s+"px";
+  localStorage.setItem("wmSz",s);
+};
+//水印拖动
+interact("#watermarkWrap").draggable({
+  listeners:{
+    move(e){
+      wmX += e.dx;
+      wmY += e.dy;
+      wmWrap.style.transform = `translate(calc(-50% + ${wmX}px), calc(-50% + ${wmY}px))`;
+    }
+  }
+});
+function clearWM(){
+  localStorage.removeItem("saveWM");
+  localStorage.removeItem("wmSz");
+  wmWrap.style.display="none";
+  wmImg.src="";
+  document.getElementById("wmFile").value="";
+  wmX=wmY=0;
+}
 
-    // 水印大小调节
-    wmSizeSlider.oninput = ()=>{
-        let s = wmSizeSlider.value;
-        wmImg.style.width = s+"px";
-        localStorage.setItem("gridWmSize",s);
+// ========== 格子互相拖拽调换顺序 ==========
+interact(".grid-slot").draggable({
+  inertia:true,
+  modifiers:[interact.modifiers.restrictRect({restriction:document.body})],
+  listeners:{move(e){
+    let el = e.target;
+    el.style.zIndex="99";
+    el.style.transform=`translate(${e.dx}px,${e.dy}px)`;
+  },
+  end(e){
+    let el = e.target;
+    el.style.zIndex="";
+    el.style.transform="";
+    reIndexVisual();
+  }}
+});
+//简单交换占位(顺序重排核心)
+canvasRoot.addEventListener("dragover",e=>e.preventDefault());
+
+// ========== 布局逻辑 ==========
+function autoGrid(){
+  const cnt = uploadedFiles.length;
+  if(!cnt) return toastShow("先上传图片");
+  currentCols = Math.ceil(Math.sqrt(cnt));
+  canvasRoot.style.gridTemplateColumns = `repeat(${currentCols},1fr)`;
+  reIndexVisual();
+}
+function applyCustomGrid(){
+  let c = +document.getElementById("colInput").value||3;
+  currentCols=Math.max(1,c);
+  canvasRoot.style.gridTemplateColumns = `repeat(${currentCols},1fr)`;
+  reIndexVisual();
+}
+//视觉从左到右编号
+function reIndexVisual(){
+  let list = Array.from(canvasRoot.querySelectorAll(".grid-slot"));
+  list.forEach((item,idx)=>{
+    item.querySelector(".slot-index").innerText = idx+1;
+  });
+}
+
+// ========== 导入图片 ==========
+document.getElementById("imgInput").onchange = e=>{
+  uploadedFiles = Array.from(e.target.files);
+  canvasRoot.innerHTML="";
+  canvasRoot.appendChild(wmWrap);
+
+  uploadedFiles.forEach((file)=>{
+    const rd = new FileReader();
+    rd.onload = ev=>{
+      let div = document.createElement("div");
+      div.className="grid-slot";
+      div.innerHTML=`
+        <div class="slot-index"></div>
+        <div class="sold-overlay"><span>卖掉了</span></div>
+        <div class="price-wrap">
+          <input class="slot-price" value="${document.getElementById('globalPrice').value}">
+        </div>
+        <div class="slot-tools">
+          <div class="tool-btn" onclick="this.closest('.grid-slot').classList.toggle('show-price')"><i class="fas fa-tag"></i></div>
+          <div class="tool-btn" onclick="this.closest('.grid-slot').classList.toggle('is-sold')"><i class="fas fa-check"></i></div>
+        </div>
+        <img src="${ev.target.result}">
+      `;
+      canvasRoot.appendChild(div);
+      //单图内部微调
+      let img = div.querySelector("img");
+      let ox=0,oy=0;
+      interact(img).draggable({
+        listeners:{move(me){
+          ox+=me.dx;oy+=me.dy;
+          img.style.objectPosition = `${50+ox/2}% ${50+oy/2}%`;
+        }}
+      });
+      reIndexVisual();
     };
+    rd.readAsDataURL(file);
+  });
+};
 
-    function clearWatermark(){
-        watermarkBase64 = "";
-        localStorage.removeItem("gridWatermark");
-        wmWrap.style.display = "none";
-        document.getElementById("waterInput").value = "";
-    }
-
-    function showToast(msg) {
-        toast.innerHTML = msg;
-        toast.style.display = 'block';
-        setTimeout(() => { toast.style.display = 'none'; }, 4000);
-    }
-
-    function toggleRatioDropdown() {
-        ratioDropdown.classList.toggle('open');
-    }
-    document.addEventListener('click', (e) => {
-        if (!ratioDropdown.contains(e.target)) ratioDropdown.classList.remove('open');
+//下载整张无缝拼图
+async function downloadAll(){
+  if(!canvasRoot.children.length)return toastShow("请先上传图片");
+  toastShow("<i class='fa fa-spin fa-spinner'></i> 生成合成图...");
+  let tools = document.querySelectorAll(".slot-tools");
+  tools.forEach(t=>t.style.display="none");
+  try{
+    let c = await html2canvas(canvasRoot,{
+      useCORS:true,
+      backgroundColor:"#A8D1E7",
+      scale:2
     });
-    ratioOptions.querySelectorAll('li').forEach(li=>{
-        li.onclick=()=>{
-            ratioOptions.querySelectorAll(l=>l.classList.remove("active"));
-            li.classList.add("active");
-            document.querySelector(".ratio-select").innerText = li.innerText;
-            canvasRoot.className = li.dataset.ratio;
-            reIndexVisual();
-        }
-    });
-
-    function autoGrid(){
-        const cnt = uploadedFiles.length;
-        if(!cnt) return showToast("先上传图片");
-        currentCols = Math.ceil(Math.sqrt(cnt));
-        canvasRoot.style.gridTemplateColumns = `repeat(${currentCols},1fr)`;
-        reIndexVisual();
-    }
-    function applyCustomGrid(){
-        let c = +document.getElementById("colInput").value || 3;
-        currentCols = Math.max(1,c);
-        canvasRoot.style.gridTemplateColumns = `repeat(${currentCols},1fr)`;
-        reIndexVisual();
-    }
-
-    // 视觉顺序编号
-    function reIndexVisual(){
-        const slots = Array.from(canvasRoot.querySelectorAll(".grid-slot"));
-        slots.forEach((el,idx)=>{
-            el.querySelector(".slot-index").innerText = idx+1;
-        });
-    }
-
-    document.getElementById("imgInput").addEventListener("change",function(){
-        uploadedFiles = Array.from(this.files);
-        canvasRoot.innerHTML = "";
-        
-        // 修复：重新添加水印，防止清空图片时水印也没了
-        canvasRoot.appendChild(wmWrap);
-        if(watermarkBase64) wmWrap.style.display = "block";
-
-        uploadedFiles.forEach(file=>{
-            const reader = new FileReader();
-            reader.onload = e=>{
-                const slot = document.createElement("div");
-               
+    let a = document.createElement("a");
+    a.download = `无缝拼图_${Date.now()}.png`;
+    a.href = c.toDataURL("image/png");
+    a.click();
+    toastShow("✅ 下载成功");
+  }catch(err){
+    toastShow("❌ 失败");
+  }finally{
+    tools.forEach(t=>t.style.display="flex");
+  }
+}
+function toastShow(t){
+  toast.innerHTML=t;
+  toast.style.display="block";
+  setTimeout(()=>toast.style.display="none",3000);
+}
+</script>
+</body>
+</html>
