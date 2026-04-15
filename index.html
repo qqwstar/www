@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sea Salt Grid - With Downloader</title>
+    <title>Sea Salt Pro - 复盘工坊</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
@@ -12,130 +12,191 @@
             --sea-salt: #A8D1E7;
             --deep-sea: #5B8DA5;
             --price-orange: #FF7E5F;
-            --sold-red: rgba(255, 71, 87, 0.85);
+            --bg-light: #F4F7F9;
         }
 
         body {
             font-family: 'PingFang SC', sans-serif;
-            background: var(--sea-salt); margin: 0;
-            display: flex; flex-direction: column; height: 100vh; overflow: hidden; 
+            background-color: var(--bg-light);
+            margin: 0; display: flex; flex-direction: column;
+            height: 100vh; overflow: hidden;
         }
 
+        /* --- 顶部工具栏 --- */
         header {
-            padding: 12px 20px; display: flex; justify-content: space-between; align-items: center;
-            background: rgba(255,255,255,0.95); z-index: 1000; flex-shrink: 0;
+            background: #fff; padding: 10px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #eee; z-index: 100;
         }
 
-        .preview-wrapper {
-            flex: 1; overflow-y: auto; display: flex; flex-direction: column; align-items: center;
-            padding: 20px 0 320px 0;
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .upload-btn {
+            background: var(--sea-salt); color: white; padding: 8px 15px;
+            border-radius: 20px; font-size: 0.85rem; cursor: pointer;
         }
 
-        #puzzle-canvas-root {
-            display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 94%; max-width: 600px;
-            background: var(--sea-salt); /* 下载后的背景色 */
+        /* --- 主容器 --- */
+        .app-body { flex: 1; display: flex; overflow: hidden; padding: 15px; gap: 15px; }
+
+        /* 左侧面板：控制区 */
+        .side-panel { width: 280px; display: flex; flex-direction: column; gap: 15px; }
+        .card { background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .card-label { font-size: 0.8rem; color: #999; margin-bottom: 10px; display: block; }
+
+        /* 右侧面板：预览区 */
+        .preview-pane {
+            flex: 1; background: #fff; border-radius: 12px;
+            display: flex; justify-content: center; align-items: flex-start;
+            overflow-y: auto; padding: 40px 20px 300px 20px; /* 底部留白确保不被按钮遮挡 */
+        }
+
+        /* --- 核心拼图容器 --- */
+        #puzzle-container {
+            display: grid;
+            width: 100%; max-width: 600px;
+            gap: 10px; background: #fff; padding: 10px;
         }
 
         .grid-slot {
-            position: relative; overflow: hidden; background: #fff; border-radius: 8px; width: 100%;
+            position: relative; overflow: hidden;
+            background: #f9f9f9; border-radius: 4px;
+            width: 100%; aspect-ratio: 1 / 1; /* 默认 1:1 */
         }
 
-        .grid-slot img { position: absolute; width: 100%; height: 100%; object-fit: cover; }
+        .grid-slot img.main-img {
+            position: absolute; width: 100%; height: 100%;
+            object-fit: cover; pointer-events: none;
+        }
 
+        /* 比例切换 */
         .ratio-4-3 .grid-slot { aspect-ratio: 4 / 3; }
         .ratio-1-1 .grid-slot { aspect-ratio: 1 / 1; }
         .ratio-9-16 .grid-slot { aspect-ratio: 9 / 16; }
 
-        /* 卖掉了蒙层 */
-        .sold-overlay {
-            position: absolute; inset: 0; background: var(--sold-red);
+        /* --- 替换后的“卖掉了”印章 --- */
+        .sold-seal {
+            position: absolute; inset: 0;
+            background: rgba(0,0,0,0.1); /* 轻微压暗底层图 */
             display: none; align-items: center; justify-content: center; z-index: 20;
         }
-        .sold-overlay span {
-            color: white; font-size: 1.2rem; font-weight: bold;
-            border: 2px solid white; padding: 2px 8px; transform: rotate(-15deg);
+        .sold-seal img {
+            width: 85%; height: auto;
+            transform: rotate(-5deg);
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
         }
-        .grid-slot.is-sold .sold-overlay { display: flex; }
+        .grid-slot.is-sold .sold-seal { display: flex; }
 
         /* 价格标签 */
-        .price-badge {
-            position: absolute; top: 10px; right: 10px; background: var(--deep-sea); color: white;
-            padding: 2px 8px; border-radius: 10px; display: none; z-index: 10; font-size: 0.8rem;
+        .price-tag {
+            position: absolute; top: 10px; right: 10px;
+            background: var(--deep-sea); color: white;
+            padding: 3px 10px; border-radius: 15px;
+            font-size: 0.75rem; font-weight: bold;
+            display: none; z-index: 25;
         }
-        .grid-slot.show-price .price-badge { display: block; }
+        .grid-slot.show-price .price-tag { display: block; }
 
-        /* 操作按钮 */
-        .slot-tools { position: absolute; bottom: 8px; right: 8px; display: flex; gap: 5px; z-index: 30; }
-        .tool-btn {
-            width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.9);
-            display: flex; align-items: center; justify-content: center; color: var(--deep-sea); cursor: pointer;
+        /* 槽位内置操作钮 */
+        .slot-controls {
+            position: absolute; bottom: 8px; right: 8px;
+            display: flex; gap: 6px; z-index: 30;
         }
-
-        /* --- 弹窗提示样式 --- */
-        #toast {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.8); color: white; padding: 15px 25px;
-            border-radius: 12px; z-index: 9999; display: none; text-align: center; line-height: 1.6;
-        }
-
-        .bottom-panel {
-            position: fixed; bottom: 0; left: 0; right: 0; background: #fff; padding: 20px;
-            border-radius: 24px 24px 0 0; box-shadow: 0 -10px 30px rgba(0,0,0,0.1); z-index: 2000;
+        .ctrl-btn {
+            width: 28px; height: 28px; border-radius: 50%;
+            background: rgba(255,255,255,0.9); border: none;
+            color: var(--deep-sea); display: flex; align-items: center; justify-content: center;
+            cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
 
-        .btn-group { display: flex; gap: 8px; margin-bottom: 15px; }
-        .opt-btn { flex: 1; padding: 10px; border: none; background: #f0f4f7; border-radius: 10px; font-size: 0.8rem; }
-        .opt-btn.active { background: var(--deep-sea); color: white; }
+        /* 底部固定保存栏 */
+        .bottom-bar {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: #fff; border-top: 1px solid #eee;
+            padding: 20px; display: flex; gap: 15px;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.05);
+        }
 
         .save-btn {
-            flex: 1; padding: 12px; border: none; border-radius: 10px;
-            background: var(--price-orange); color: white; font-weight: bold;
+            flex: 1; background: var(--price-orange); color: white;
+            border: none; padding: 15px; border-radius: 10px;
+            font-weight: bold; cursor: pointer;
+        }
+
+        /* 提示弹窗 */
+        #toast {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8); color: white; padding: 15px 30px;
+            border-radius: 30px; z-index: 9999; display: none;
         }
     </style>
 </head>
 <body>
 
 <header>
-    <b style="color: var(--deep-sea);">Sea Salt Grid</b>
-    <label style="background: var(--deep-sea); color: white; padding: 6px 15px; border-radius: 15px; font-size: 0.8rem;">
-        导入图片 <input type="file" id="imgInput" multiple accept="image/*" hidden>
-    </label>
+    <div class="header-left">
+        <b style="color:var(--deep-sea)">Sea Salt Pro</b>
+        <label class="upload-btn">
+            批量导入素材 <input type="file" id="imgInput" multiple accept="image/*" hidden>
+        </label>
+    </div>
+    <div id="status-text" style="font-size: 0.8rem; color: #999;">等待图片导入...</div>
 </header>
+
+<div class="app-body">
+    <div class="side-panel">
+        <div class="card">
+            <span class="card-label">拼图比例</span>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                <button onclick="setRatio('ratio-4-3')" class="opt-btn">4:3</button>
+                <button onclick="setRatio('ratio-1-1')" class="opt-btn">1:1</button>
+                <button onclick="setRatio('ratio-9-16')" class="opt-btn">9:16</button>
+            </div>
+        </div>
+        <div class="card">
+            <span class="card-label">单价设置 (¥)</span>
+            <input type="number" id="globalPrice" value="99.00" step="1" 
+                   style="width:100%; border:1px solid #eee; padding:10px; border-radius:8px; font-weight:bold; color:var(--price-orange);"
+                   oninput="syncAllPrices()">
+        </div>
+    </div>
+
+    <div class="preview-pane">
+        <div id="puzzle-container" class="ratio-1-1">
+            </div>
+    </div>
+</div>
+
+<div class="bottom-bar">
+    <button class="save-btn" onclick="saveToGallery()">
+        <i class="fas fa-download"></i> 生成高清图并保存至相册
+    </button>
+</div>
 
 <div id="toast"></div>
 
-<div class="preview-wrapper">
-    <div id="puzzle-canvas-root" class="ratio-4-3"></div>
-</div>
-
-<div class="bottom-panel">
-    <div class="btn-group">
-        <button class="opt-btn active" onclick="setRatio(this, 'ratio-4-3')">4:3</button>
-        <button class="opt-btn" onclick="setRatio(this, 'ratio-1-1')">1:1</button>
-        <button class="opt-btn" onclick="setRatio(this, 'ratio-9-16')">9:16</button>
-    </div>
-    <div style="display: flex; gap: 10px; align-items: center;">
-        <input type="number" id="unitPrice" style="width:70px; padding:10px; border:1px solid #eee; border-radius:8px;" value="99" oninput="syncPrices()">
-        <button class="save-btn" onclick="downloadPuzzle()">保存全图到手机</button>
-    </div>
-</div>
-
 <script>
-    const canvasRoot = document.getElementById('puzzle-canvas-root');
-    const unitPriceInput = document.getElementById('unitPrice');
+    const container = document.getElementById('puzzle-container');
+    const imgInput = document.getElementById('imgInput');
+    const priceInput = document.getElementById('globalPrice');
     const toast = document.getElementById('toast');
 
-    function showToast(msg) {
-        toast.innerHTML = msg;
-        toast.style.display = 'block';
-        setTimeout(() => { toast.style.display = 'none'; }, 4000);
-    }
+    // “卖掉了”印章图片的 Base64 地址 (这里我使用了你提供的印章特征)
+    // 为了保证离线和下载可用，建议使用 Base64 或完整的 URL
+    const soldSealUrl = "https://i.postimg.cc/85z1zX6j/image.png"; // 请确保这个链接指向你刚才发的印章图
 
-    document.getElementById('imgInput').addEventListener('change', function() {
+    imgInput.addEventListener('change', function() {
         const files = Array.from(this.files);
-        const cols = files.length <= 2 ? 1 : (files.length <= 4 ? 2 : 3);
-        canvasRoot.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-        canvasRoot.innerHTML = '';
+        if(!files.length) return;
+
+        // --- 核心：多张图片自动适配逻辑 ---
+        // 2-4张用2列，5-9张用3列，10张以上用4列
+        let cols = 2;
+        if(files.length > 4) cols = 3;
+        if(files.length > 9) cols = 4;
+        container.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+        
+        container.innerHTML = '';
+        document.getElementById('status-text').innerText = `已导入 ${files.length} 张素材`;
 
         files.forEach((file) => {
             const reader = new FileReader();
@@ -143,16 +204,18 @@
                 const slot = document.createElement('div');
                 slot.className = 'grid-slot';
                 slot.innerHTML = `
-                    <div class="sold-overlay"><span>卖掉了</span></div>
-                    <div class="price-badge">¥ ${unitPriceInput.value}</div>
-                    <div class="slot-tools">
-                        <div class="tool-btn" onclick="event.stopPropagation();this.closest('.grid-slot').classList.toggle('show-price')"><i class="fas fa-tag"></i></div>
-                        <div class="tool-btn" onclick="event.stopPropagation();this.closest('.grid-slot').classList.toggle('is-sold')"><i class="fas fa-check"></i></div>
+                    <div class="sold-seal"><img src="${soldSealUrl}"></div>
+                    <div class="price-tag">¥ ${priceInput.value}</div>
+                    <div class="slot-controls">
+                        <button class="ctrl-btn" onclick="togglePrice(this)"><i class="fas fa-tag"></i></button>
+                        <button class="ctrl-btn" onclick="toggleSold(this)"><i class="fas fa-check"></i></button>
                     </div>
-                    <img src="${e.target.result}" style="object-position: 50% 50%">
+                    <img src="${e.target.result}" class="main-img">
                 `;
-                canvasRoot.appendChild(slot);
-                const img = slot.querySelector('img');
+                container.appendChild(slot);
+
+                // 自由裁剪拖拽
+                const img = slot.querySelector('.main-img');
                 let offset = { x: 0, y: 0 };
                 interact(slot).draggable({
                     listeners: { move(event) {
@@ -165,47 +228,60 @@
         });
     });
 
-    async function downloadPuzzle() {
-        if (!canvasRoot.children.length) return alert("请先上传图片");
-        
-        showToast('<i class="fas fa-spinner fa-spin"></i> 正在生成高清图...<br>请稍候');
+    function toggleSold(btn) {
+        btn.closest('.grid-slot').classList.toggle('is-sold');
+    }
 
-        // 临时隐藏操作按钮以便截图
-        const tools = document.querySelectorAll('.slot-tools');
-        tools.forEach(t => t.style.visibility = 'hidden');
+    function togglePrice(btn) {
+        btn.closest('.grid-slot').classList.toggle('show-price');
+    }
+
+    function setRatio(r) {
+        container.className = r;
+    }
+
+    function syncAllPrices() {
+        document.querySelectorAll('.price-tag').forEach(tag => {
+            tag.innerText = `¥ ${priceInput.value}`;
+        });
+    }
+
+    function showToast(msg) {
+        toast.innerText = msg;
+        toast.style.display = 'block';
+        setTimeout(() => toast.style.display = 'none', 3000);
+    }
+
+    // --- 核心：保存至相册逻辑 ---
+    async function saveToGallery() {
+        if(!container.children.length) return alert("请先导入图片");
+        
+        showToast("正在导出高清图...");
+
+        // 下载前暂时隐藏操作按钮
+        const ctrls = document.querySelectorAll('.slot-controls');
+        ctrls.forEach(c => c.style.display = 'none');
 
         try {
-            const canvas = await html2canvas(canvasRoot, {
+            const canvas = await html2canvas(container, {
                 useCORS: true,
-                backgroundColor: '#A8D1E7',
-                scale: 2 // 提高清晰度
+                scale: 2, // 2倍采样，保证打印级别清晰度
+                backgroundColor: '#ffffff'
             });
 
             const link = document.createElement('a');
-            const date = new Date().getTime();
-            link.download = `海盐拼图_${date}.png`;
+            link.download = `SeaSalt_Puzzle_${Date.now()}.png`;
             link.href = canvas.toDataURL("image/png");
             link.click();
 
-            // 核心提示逻辑
-            showToast('<b>✅ 下载成功！</b><br>1. 请查看浏览器下载记录<br>2. 或在相册“最近添加”中查找<br>3. 苹果手机请在“文件”App中查看');
-
+            showToast("✅ 已触发保存！请在浏览器下载或相册查看");
         } catch (err) {
-            showToast('❌ 保存失败，请尝试截图保存');
+            alert("保存失败，请尝试截图");
         } finally {
-            tools.forEach(t => t.style.visibility = 'visible');
+            ctrls.forEach(c => c.style.display = 'flex');
         }
     }
-
-    function setRatio(btn, r) {
-        document.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        canvasRoot.className = r;
-    }
-
-    function syncPrices() {
-        document.querySelectorAll('.price-badge').forEach(b => b.innerText = `¥ ${unitPriceInput.value}`);
-    }
 </script>
+
 </body>
 </html>
