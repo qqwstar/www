@@ -3,318 +3,261 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sea Salt Blue Puzzle Maker - PRO</title>
+    <title>Sea Salt Grid - With Downloader</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <style>
         :root {
-            --sea-salt-main: #A8D1E7;  /* 核心海盐蓝 */
-            --sea-salt-deep: #5B8DA5;  /* 深海蓝，用于文字和强调 */
-            --bg-light: #F4F7F9;        /* 整体背景 */
-            --white: #FFFFFF;
-            --border-color: #E1E8ED;
-            --text-main: #333333;
-            --sold-red: rgba(255, 71, 87, 0.85); /* “卖光了”蒙层红 */
-            --transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+            --sea-salt: #A8D1E7;
+            --deep-sea: #5B8DA5;
+            --price-orange: #FF7E5F;
+            --sold-red: rgba(255, 71, 87, 0.85);
         }
 
         body {
-            font-family: 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
-            background-color: var(--bg-light);
-            margin: 0; padding: 0;
-            display: flex; flex-direction: column;
-            height: 100vh; color: var(--text-main);
-            overflow: hidden;
+            font-family: 'PingFang SC', sans-serif;
+            background: var(--sea-salt); margin: 0;
+            display: flex; flex-direction: column; height: 100vh; overflow: hidden; 
         }
 
-        /* --- 顶部通栏导航 (基于 UI 图) --- */
         header {
-            background-color: var(--white);
-            padding: 10px 20px;
-            display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 1px solid var(--border-color);
-            z-index: 100;
+            padding: 12px 20px; display: flex; justify-content: space-between; align-items: center;
+            background: rgba(255,255,255,0.95); z-index: 1000; flex-shrink: 0;
+            position: relative;
         }
 
-        .header-logo {
-            display: flex; align-items: center; gap: 10px;
-            color: var(--sea-salt-deep); font-weight: bold; font-size: 1.1rem;
+        /* 比例下拉菜单 */
+        .ratio-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .ratio-select {
+            background: var(--deep-sea); color: white; padding: 6px 25px 6px 15px; border-radius: 15px; font-size: 0.8rem;
+            cursor: pointer; position: relative;
+        }
+        .ratio-select::after {
+            content: '▼'; font-size: 0.6rem; position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+        }
+        .ratio-options {
+            position: absolute; top: 100%; right: 0; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            list-style: none; padding: 8px 0; margin: 5px 0 0 0; min-width: 120px; display: none; z-index: 1001;
+        }
+        .ratio-options li {
+            padding: 8px 15px; cursor: pointer; font-size: 0.8rem; color: #333;
+        }
+        .ratio-options li:hover { background: #f0f4f7; }
+        .ratio-options li.active {
+            background: var(--deep-sea); color: white;
+        }
+        .ratio-dropdown.open .ratio-options { display: block; }
+
+        .preview-wrapper {
+            flex: 1; overflow-y: auto; display: flex; flex-direction: column; align-items: center;
+            padding: 20px 0 320px 0;
         }
 
-        .header-logo i { font-size: 1.4rem; }
-
-        .header-actions { display: flex; gap: 10px; }
-        .icon-btn-top {
-            background: transparent; border: none; color: #888;
-            font-size: 1.2rem; cursor: pointer; transition: var(--transition);
-        }
-        .icon-btn-top:hover { color: var(--sea-salt-deep); }
-
-        /* --- 主体布局 (左工具栏，右预览区) --- */
-        .main-container {
-            flex: 1; display: flex; overflow: hidden; padding: 20px; gap: 20px;
-        }
-
-        /* 左侧工具栏 */
-        .toolbar {
-            width: 320px; display: flex; flex-direction: column; gap: 20px;
-            overflow-y: auto;
-        }
-
-        /* 右侧大预览区 */
-        .preview-area {
-            flex: 1; display: flex; justify-content: center; align-items: center;
-            background-color: var(--white); border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
-            overflow: auto; padding: 40px; position: relative;
-        }
-
-        /* 专业卡片样式 */
-        .tool-card {
-            background-color: var(--white); padding: 20px; border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
-            border: 1px solid rgba(168, 209, 231, 0.2);
-        }
-
-        .card-title {
-            font-size: 0.9rem; color: #777; margin-bottom: 15px; display: block;
-        }
-
-        /* 统一按钮样式 */
-        .opt-btn {
-            background-color: #F0F4F7; border: 1px solid transparent; color: #555;
-            padding: 10px; border-radius: 8px; font-size: 0.85rem;
-            cursor: pointer; transition: var(--transition); text-align: center;
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-        }
-        .opt-btn:hover { background-color: #EBF0F3; }
-        .opt-btn.active {
-            background-color: var(--sea-salt-main); color: var(--white);
-            border-color: var(--sea-salt-deep); font-weight: bold;
-        }
-
-        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-
-        /* 滑块优化 */
-        .slider-container { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; }
-        .slider-label { font-size: 0.8rem; color: #888; }
-        input[type=range] {
-            width: 100%; cursor: pointer; -webkit-appearance: none;
-        }
-        input[type=range]::-webkit-slider-runnable-track {
-            background: #E1E8ED; height: 6px; border-radius: 3px;
-        }
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none; height: 16px; width: 16px;
-            background: var(--sea-salt-deep); border-radius: 50%;
-            margin-top: -5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-
-        /* 价格卡片细节 */
-        .price-list { font-size: 0.85rem; color: #666; display: flex; flex-direction: column; gap: 8px; }
-        .price-item { display: flex; justify-content: space-between; }
-        .total-price {
-            font-size: 1.6rem; color: #FF7E5F; font-weight: bold;
-            display: flex; align-items: center; justify-content: center;
-            background-color: #FFF0ED; padding: 10px; border-radius: 8px; margin-top: 15px;
-        }
-
-        .purchase-btn {
-            background-color: var(--sea-salt-deep); color: var(--white);
-            border: none; padding: 15px; border-radius: 10px; width: 100%;
-            font-size: 1rem; cursor: pointer; margin-top: 15px; transition: var(--transition);
-        }
-        .purchase-btn:hover { background-color: #4a758a; }
-
-        /* --- 核心：3x3 完美九宫格九帝 Canvas 容器 --- */
-        #puzzle-canvas-wrapper {
+        #puzzle-canvas-root {
             display: grid; 
-            /* 初始默认 3 列，JS 会根据图片数量动态调整为 3x3 排版 */
-            grid-template-columns: repeat(3, 1fr); 
-            gap: 10px; /* 女帝图细缝 */
-            width: 94%; max-width: 600px;
-            position: relative; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            background: #fff; /* 防止背景色透出 */
-            transition: 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+            gap: 10px; width: 94%; max-width: 900px;
+            background: var(--sea-salt);
         }
 
-        /* Canvas 上的图片格子 (由 JS 生成) */
-        .puzzle-grid-slot {
-            position: relative; overflow: hidden; cursor: grab;
-            border-radius: 8px; width: 100%;
+        .grid-slot {
+            position: relative; overflow: hidden; background: #fff; border-radius: 8px; width: 100%;
         }
-        .puzzle-grid-slot img {
-            width: 100%; height: 100%; object-fit: cover; pointer-events: none;
+        /* 序号样式 */
+        .slot-index {
+            position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.5);
+            color: white; width: 24px; height: 24px; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center; font-size: 0.8rem; z-index: 25;
         }
 
-        /* 比例动态调整 */
-        .ratio-1-1 .puzzle-grid-slot { aspect-ratio: 1/1; }
-        .ratio-3-4 .puzzle-grid-slot { aspect-ratio: 3/4; }
-        .ratio-16-9 .puzzle-grid-slot { aspect-ratio: 16/9; }
+        .grid-slot img { position: absolute; width: 100%; height: 100%; object-fit: cover; }
 
-        /* --- “卖光了” 蒙层 --- */
+        .ratio-1-1 .grid-slot { aspect-ratio: 1 / 1; }
+        .ratio-3-4 .grid-slot { aspect-ratio: 3 / 4; }
+        .ratio-9-16 .grid-slot { aspect-ratio: 9 / 16; }
+        .ratio-4-3 .grid-slot { aspect-ratio: 4 / 3; }
+        .ratio-16-9 .grid-slot { aspect-ratio: 16 / 9; }
+
         .sold-overlay {
             position: absolute; inset: 0; background: var(--sold-red);
             display: none; align-items: center; justify-content: center; z-index: 20;
         }
         .sold-overlay span {
             color: white; font-size: 1.2rem; font-weight: bold;
-            border: 2px solid white; padding: 2px 8px; transform: rotate(-15deg); text-transform: uppercase;
+            border: 2px solid white; padding: 2px 8px; transform: rotate(-15deg);
         }
-        .puzzle-grid-slot.is-sold .sold-overlay { display: flex; }
+        .grid-slot.is-sold .sold-overlay { display: flex; }
 
-        /* --- 图片上的价格标签 --- */
         .price-badge {
-            position: absolute; top: 15px; right: 15px;
-            background: rgba(168, 209, 231, 0.9); color: white;
-            padding: 4px 12px; border-radius: 20px; font-weight: bold;
-            font-size: 0.9rem; backdrop-filter: blur(4px);
-            border: 1px solid rgba(255,255,255,0.5);
-            display: none; /* 默认隐藏 */
-            z-index: 10; pointer-events: none;
+            position: absolute; top: 10px; right: 10px; background: var(--deep-sea); color: white;
+            padding: 2px 8px; border-radius: 10px; display: none; z-index: 10; font-size: 0.8rem;
         }
-        .puzzle-grid-slot.show-price .price-badge { display: block; }
+        .grid-slot.show-price .price-badge { display: block; }
 
-        /* 单图工具按钮组 */
-        .slot-tools {
-            position: absolute; bottom: 8px; right: 8px;
-            display: flex; gap: 5px; z-index: 30;
-        }
+        .slot-tools { position: absolute; bottom: 8px; right: 8px; display: flex; gap: 5px; z-index: 30; }
         .tool-btn {
-            width: 30px; height: 30px; border-radius: 50%;
-            background: rgba(255,255,255,0.9); display: flex;
-            align-items: center; justify-content: center;
-            color: var(--deep-sea); cursor: pointer; font-size: 0.8rem;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.9);
+            display: flex; align-items: center; justify-content: center; color: var(--deep-sea); cursor: pointer;
         }
 
-        /* 顶部通栏导航细节 */
-        .header-logo i { font-size: 1.4rem; }
+        #toast {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8); color: white; padding: 15px 25px;
+            border-radius: 12px; z-index: 9999; display: none; text-align: center; line-height: 1.6;
+        }
+
+        .bottom-panel {
+            position: fixed; bottom: 0; left: 0; right: 0; background: #fff; padding: 20px;
+            border-radius: 24px 24px 0 0; box-shadow: 0 -10px 30px rgba(0,0,0,0.1); z-index: 2000;
+        }
+
+        .btn-group { display: flex; gap: 8px; margin-bottom: 12px; }
+        .opt-btn { flex: 1; padding: 10px; border: none; background: #f0f4f7; border-radius: 10px; font-size: 0.8rem; }
+        .opt-btn.active { background: var(--deep-sea); color: white; }
+
+        .grid-ctrl {
+            display:flex; gap:8px; align-items:center; margin-bottom:15px;
+        }
+        .grid-ctrl input{
+            width:50px;padding:8px;border:1px solid #eee;border-radius:8px;text-align:center;
+        }
+        .grid-ctrl button{
+            padding:8px 12px;border:none;background:var(--deep-sea);color:white;border-radius:8px;
+        }
+
+        .save-btn {
+            flex: 1; padding: 12px; border: none; border-radius: 10px;
+            background: var(--price-orange); color: white; font-weight: bold;
+        }
     </style>
 </head>
 <body>
 
 <header>
-    <div class="header-logo">
-        <i class="fas fa-layer-group"></i>
-        <span>Sea Salt Blue Puzzle Maker - Result Preview</span>
+    <b style="color: var(--deep-sea);">Sea Salt Grid</b>
+    <div class="ratio-dropdown" id="ratioDropdown">
+        <div class="ratio-select" onclick="toggleRatioDropdown()">1:1</div>
+        <ul class="ratio-options" id="ratioOptions">
+            <li data-ratio="ratio-1-1" class="active">1:1</li>
+            <li data-ratio="ratio-3-4">3:4</li>
+            <li data-ratio="ratio-9-16">9:16</li>
+            <li data-ratio="ratio-4-3">4:3</li>
+            <li data-ratio="ratio-16-9">16:9</li>
+        </ul>
     </div>
-    <div class="header-actions">
-        <span style="color: #777; font-size: 0.8rem; margin-right: 15px;">九九九九选帝 selected</span>
-        <i class="fas fa-save icon-btn" onclick="downloadPuzzle()"></i>
-        <i class="fas fa-redo-alt icon-btn" onclick="location.reload()"></i>
-        <i class="fas fa-trash-alt icon-btn" style="color: #ff7675;"></i>
-    </div>
+    <label style="background: var(--deep-sea); color: white; padding: 6px 15px; border-radius: 15px; font-size: 0.8rem;">
+        导入图片 <input type="file" id="imgInput" multiple accept="image/*" hidden>
+    </label>
 </header>
 
-<div class="main-container">
-    <div class="toolbar">
-        <div class="tool-card">
-            <label class="opt-btn active" style="width: 100%; box-sizing: border-box;">
-                <i class="fas fa-cloud-upload-alt"></i> Upload 九九九帝素材图片 (批量导入)
-                <input type="file" id="imageFiles" multiple accept="image/*" hidden>
-            </label>
-        </div>
+<div id="toast"></div>
 
-        <div class="tool-card">
-            <span class="card-title">Choose puzzle ratio:</span>
-            <div class="flex-row">
-                <button class="opt-btn active" onclick="setRatio(this, 'ratio-3-4')">3:4经典</button>
-                <button class="opt-btn" onclick="setRatio(this, 'ratio-1-1')">1:1九格</button>
-                <button class="opt-btn" onclick="setRatio(this, 'ratio-16-9')">电影感长图</button>
-            </div>
-            <div class="slider-container">
-                <span class="slider-label">Crop Size (大局部显示灵敏度)</span>
-                <input type="range" min="10" max="100" value="50">
-            </div>
-        </div>
+<div class="preview-wrapper">
+    <div id="puzzle-canvas-root" class="ratio-1-1"></div>
+</div>
 
-        <div class="tool-card">
-            <span class="card-title">标价设定与一键加价</span>
-            <div class="flex-row">
-                <div class="price-input-wrap" style="flex:1.5; background:#FFF0ED; display:flex; align-items:center; padding:5px 12px; border-radius:10px;">
-                    <span style="font-size:0.8rem; color:#888; margin-right:5px;">单价 ¥</span>
-                    <input type="number" id="unitPrice" value="9.90" step="0.1" style="background:transparent; border:none; outline:none; color:#FF7E5F; font-weight:bold; font-size:1rem;" oninput="updateAllPrices()">
-                </div>
-                <div style="font-size: 0.75rem; color: #aaa; flex:1;">点击图上图标 一键贴价</div>
-            </div>
-        </div>
-
-        <div class="tool-card">
-            <div class="btn-grid">
-                <button class="opt-btn active"><i class="fas fa-check"></i> 销售复盘</button>
-                <button class="opt-btn"><i class="fas fa-tag"></i> 价格蒙层</button>
-            </div>
-            <label class="opt-btn" style="margin-top: 15px; width: 100%; box-sizing: border-box; background: var(--bg-light); border: 1px dashed var(--sea-salt-main);">
-                <i class="fas fa-stamp"></i> 自定义销售水印
-                <input type="file" id="watermarkFile" accept="image/*" hidden>
-            </label>
-            <div style="margin-top: 15px; font-size: 0.75rem; color: #aaa;">支持本地图片，上传即存本地</div>
-        </div>
-
-        <div class="tool-card" style="margin-top: auto;">
-            <div class="price-list">
-                <div class="price-item"><span>Price (per slot):</span> <span>¥9.90</span></div>
-                <div class="price-item"><span>Slot Count:</span> <span id="slot-count">0</span></div>
-            </div>
-            <div class="total-price">TOTAL: ¥ <span id="total-price-val">0.00</span></div>
-            <button class="purchase-btn" onclick="alert('高清渲染导出中...')">Purchase & Download作品</button>
-        </div>
+<div class="bottom-panel">
+    <!-- 自定义行列 控制器 -->
+    <div class="grid-ctrl">
+        <input type="number" id="colInput" placeholder="列" min="1" value="3">
+        <span>×</span>
+        <input type="number" id="rowInput" placeholder="行" min="1" value="3">
+        <button onclick="applyCustomGrid()">应用网格</button>
+        <button onclick="autoGrid()" style="background:#999">自动排版</button>
     </div>
 
-    <div class="preview-area">
-        <div id="puzzle-canvas-wrapper" class="ratio-3-4">
-            <div id="placeholder" style="color: #ccc; font-size: 1rem; text-align: center; padding: 100px;">等待批量导入九九帝生成3x3完美排版预览...</div>
-        </div>
+    <div style="display: flex; gap: 10px; align-items: center;">
+        <input type="number" id="unitPrice" style="width:70px; padding:10px; border:1px solid #eee; border-radius:8px;" value="99" oninput="syncPrices()">
+        <button class="save-btn" onclick="downloadPuzzle()">保存全图到手机</button>
     </div>
 </div>
 
 <script>
-    const wrapper = document.getElementById('puzzle-canvas-wrapper');
-    const fileInput = document.getElementById('imageFiles');
+    const canvasRoot = document.getElementById('puzzle-canvas-root');
     const unitPriceInput = document.getElementById('unitPrice');
-    let imgFiles = [];
-    const unitPrice = 9.90; // 默认单价
+    const toast = document.getElementById('toast');
+    const ratioDropdown = document.getElementById('ratioDropdown');
+    const ratioOptions = document.getElementById('ratioOptions');
+    let uploadedFiles = [];
+    let currentRatio = 'ratio-1-1'; // 默认比例
 
-    imgInput.addEventListener('change', function() {
-        imgFiles = Array.from(this.files);
-        if(!imgFiles.length) return;
-        renderGrid();
+    function showToast(msg) {
+        toast.innerHTML = msg;
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.display = 'none'; }, 4000);
+    }
+
+    // 比例下拉菜单逻辑
+    function toggleRatioDropdown() {
+        ratioDropdown.classList.toggle('open');
+    }
+    // 点击外部关闭下拉
+    document.addEventListener('click', (e) => {
+        if (!ratioDropdown.contains(e.target)) {
+            ratioDropdown.classList.remove('open');
+        }
     });
+    // 选择比例
+    ratioOptions.querySelectorAll('li').forEach(li => {
+        li.addEventListener('click', () => {
+            const ratio = li.dataset.ratio;
+            // 更新激活状态
+            ratioOptions.querySelectorAll('li').forEach(item => item.classList.remove('active'));
+            li.classList.add('active');
+            // 更新显示文本
+            document.querySelector('.ratio-select').textContent = li.textContent;
+            // 应用比例
+            setRatioClass(ratio);
+            ratioDropdown.classList.remove('open');
+        });
+    });
+    // 设置比例类
+    function setRatioClass(ratioClass) {
+        canvasRoot.className = ratioClass;
+        currentRatio = ratioClass;
+    }
 
-    // --- 3x3 九宫格排版逻辑 ---
-    function renderGrid() {
-        document.getElementById('placeholder').style.display = 'none';
-        wrapper.querySelectorAll('.puzzle-grid-slot').forEach(s => s.remove());
+    // 自动正方形排版
+    function autoGrid(){
+        const cnt = uploadedFiles.length;
+        if (cnt === 0) return showToast('请先上传图片');
+        const cols = Math.ceil(Math.sqrt(cnt));
+        canvasRoot.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    }
 
-        // 计算网格行列：9张图生成3x3，4张生成2x2，以此类推
-        const cols = imgFiles.length <= 2 ? 1 : (imgFiles.length <= 4 ? 2 : 3);
-        wrapper.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    // 手动自定义行列
+    function applyCustomGrid(){
+        let c = parseInt(document.getElementById('colInput').value) || 3;
+        let r = parseInt(document.getElementById('rowInput').value) || 3;
+        c = Math.max(1,c);
+        canvasRoot.style.gridTemplateColumns = `repeat(${c}, 1fr)`;
+    }
 
-        // 核心：大局部显示尺寸映射
-        const baseWidth = window.innerWidth > 600 ? 600 : window.innerWidth - 60;
-        const slotWidth = baseWidth / cols;
+    document.getElementById('imgInput').addEventListener('change', function() {
+        uploadedFiles = Array.from(this.files);
+        canvasRoot.innerHTML = '';
 
-        imgFiles.forEach((file, index) => {
+        uploadedFiles.forEach((file, index) => {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const slot = document.createElement('div');
-                slot.className = 'puzzle-grid-slot';
-                
+                slot.className = 'grid-slot';
+                // 序号从1开始
+                const indexText = index + 1;
                 slot.innerHTML = `
-                    <div class="sold-overlay"><span>卖光了</span></div>
-                    <div class="price-badge">¥ ${parseFloat(unitPriceInput.value).toFixed(2)}</div>
+                    <div class="slot-index">${indexText}</div>
+                    <div class="sold-overlay"><span>卖掉了</span></div>
+                    <div class="price-badge">¥ ${unitPriceInput.value}</div>
                     <div class="slot-tools">
-                        <div class="tool-btn" onclick="this.closest('.puzzle-grid-slot').classList.toggle('show-price')"><i class="fas fa-tag"></i></div>
-                        <div class="tool-btn" onclick="this.closest('.puzzle-grid-slot').classList.toggle('is-sold')"><i class="fas fa-check"></i></div>
+                        <div class="tool-btn" onclick="event.stopPropagation();this.closest('.grid-slot').classList.toggle('show-price')"><i class="fas fa-tag"></i></div>
+                        <div class="tool-btn" onclick="event.stopPropagation();this.closest('.grid-slot').classList.toggle('is-sold')"><i class="fas fa-check"></i></div>
                     </div>
                     <img src="${e.target.result}" style="object-position: 50% 50%">
                 `;
-                
-                wrapper.appendChild(slot);
-
-                // 自由裁剪调整
+                canvasRoot.appendChild(slot);
                 const img = slot.querySelector('img');
                 let offset = { x: 0, y: 0 };
                 interact(slot).draggable({
@@ -326,30 +269,50 @@
             };
             reader.readAsDataURL(file);
         });
-        updateTotal();
+    });
+
+    async function downloadPuzzle() {
+        if (!canvasRoot.children.length) return alert("请先上传图片");
+        
+        showToast('<i class="fas fa-spinner fa-spin"></i> 正在生成高清图...<br>请稍候');
+
+        const tools = document.querySelectorAll('.slot-tools');
+        tools.forEach(t => t.style.visibility = 'hidden');
+
+        try {
+            const canvas = await html2canvas(canvasRoot, {
+                useCORS: true,
+                backgroundColor: '#A8D1E7',
+                scale: 2
+            });
+
+            const link = document.createElement('a');
+            const date = new Date().getTime();
+            link.download = `海盐拼图_${date}.png`;
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+
+            showToast('<b>✅ 下载成功！</b><br>1. 查看浏览器下载<br>2. 相册最近添加<br>3. iPhone在「文件」App');
+
+        } catch (err) {
+            showToast('❌ 保存失败，手动截图');
+        } finally {
+            tools.forEach(t => t.style.visibility = 'visible');
+        }
     }
 
-    function updateTotal() {
-        const unit = parseFloat(unitPriceInput.value) || 0;
-        document.getElementById('slot-count').innerText = imgFiles.length;
-        document.getElementById('total-price-val').innerText = (imgFiles.length * unit).toFixed(2);
-    }
-
-    // 比例切换：需要重新触发JS排版
-    function setRatio(btn, ratio) {
-        document.querySelectorAll('.flex-row .opt-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        wrapper.className = ratio;
-        // 如果已经有图，重新触发布局逻辑
-        if(imgFiles.length > 0) renderGrid();
-    }
-
-    function updateAllPrices() {
-        const val = parseFloat(unitPriceInput.value) || 0;
-        document.querySelectorAll('.price-badge').forEach(b => {
-            b.innerText = `¥ ${val.toFixed(2)}`;
+    // 兼容旧版按钮，实际使用下拉菜单
+    function setRatio(btn, r) {
+        setRatioClass(r);
+        // 更新下拉菜单显示
+        document.querySelector('.ratio-select').textContent = btn.textContent;
+        ratioOptions.querySelectorAll('li').forEach(li => {
+            li.classList.toggle('active', li.dataset.ratio === r);
         });
-        updateTotal();
+    }
+
+    function syncPrices() {
+        document.querySelectorAll('.price-badge').forEach(b => b.innerText = `¥ ${unitPriceInput.value}`);
     }
 </script>
 </body>
