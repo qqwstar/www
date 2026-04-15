@@ -18,16 +18,14 @@
         body {
             font-family: 'PingFang SC', sans-serif;
             background: var(--sea-salt); margin: 0;
-            display: flex; flex-direction: column; height: 100vh; overflow: hidden; 
+            display: flex; flex-direction: column; height: 100vh; overflow: hidden;
         }
 
         header {
             padding: 12px 20px; display: flex; justify-content: space-between; align-items: center;
             background: rgba(255,255,255,0.95); z-index: 1000; flex-shrink: 0;
-            position: relative;
         }
 
-        /* 比例下拉菜单 */
         .ratio-dropdown {
             position: relative;
             display: inline-block;
@@ -54,19 +52,32 @@
 
         .preview-wrapper {
             flex: 1; overflow-y: auto; display: flex; flex-direction: column; align-items: center;
-            padding: 20px 0 320px 0;
+            padding: 60px 0 380px 0;
         }
 
         #puzzle-canvas-root {
-            display: grid; 
+            display: grid;
             gap: 10px; width: 94%; max-width: 900px;
             background: var(--sea-salt);
+            position:relative;
+        }
+
+        /* 全局水印容器 */
+        #watermarkWrap{
+            position:absolute;
+            left:50%;top:50%;
+            transform:translate(-50%,-50%);
+            pointer-events:none;
+            z-index:50;
+        }
+        #globalWatermark{
+            max-width:200px;
+            user-select:none;
         }
 
         .grid-slot {
             position: relative; overflow: hidden; background: #fff; border-radius: 8px; width: 100%;
         }
-        /* 序号样式 */
         .slot-index {
             position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.5);
             color: white; width: 24px; height: 24px; border-radius: 50%; display: flex;
@@ -91,11 +102,16 @@
         }
         .grid-slot.is-sold .sold-overlay { display: flex; }
 
-        .price-badge {
-            position: absolute; top: 10px; right: 10px; background: var(--deep-sea); color: white;
-            padding: 2px 8px; border-radius: 10px; display: none; z-index: 10; font-size: 0.8rem;
+        .price-wrap{
+            position: absolute; top:10px; right:10px;
+            z-index:12; display:none;
         }
-        .grid-slot.show-price .price-badge { display: block; }
+        .grid-slot.show-price .price-wrap{display:block;}
+        .slot-price{
+            width:70px; border:none; padding:3px 6px;
+            border-radius:6px; background:var(--deep-sea); color:#fff;
+            text-align:right; outline:none;
+        }
 
         .slot-tools { position: absolute; bottom: 8px; right: 8px; display: flex; gap: 5px; z-index: 30; }
         .tool-btn {
@@ -106,7 +122,7 @@
         #toast {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: rgba(0,0,0,0.8); color: white; padding: 15px 25px;
-            border-radius: 12px; z-index: 9999; display: none; text-align: center; line-height: 1.6;
+            border-radius: 12px; z-index: 9999; display: none; text-align: 1.6;
         }
 
         .bottom-panel {
@@ -114,20 +130,24 @@
             border-radius: 24px 24px 0 0; box-shadow: 0 -10px 30px rgba(0,0,0,0.1); z-index: 2000;
         }
 
-        .btn-group { display: flex; gap: 8px; margin-bottom: 12px; }
-        .opt-btn { flex: 1; padding: 10px; border: none; background: #f0f4f7; border-radius: 10px; font-size: 0.8rem; }
-        .opt-btn.active { background: var(--deep-sea); color: white; }
-
-        .grid-ctrl {
-            display:flex; gap:8px; align-items:center; margin-bottom:15px;
+        .ctrl-row{
+            display:flex; gap:8px; align-items:center; margin-bottom:12px;
+            flex-wrap:wrap;
         }
-        .grid-ctrl input{
-            width:50px;padding:8px;border:1px solid #eee;border-radius:8px;text-align:center;
+        .ctrl-row input{
+            padding:8px;border:1px solid #eee;border-radius:8px;
         }
-        .grid-ctrl button{
+        .ctrl-row button{
             padding:8px 12px;border:none;background:var(--deep-sea);color:white;border-radius:8px;
         }
+        .size-slider{
+            width:100px;
+        }
 
+        .price-line{
+            display: flex; gap: 10px; align-items: center; margin-top:10px;
+        }
+        .price-line label{color:#333;font-size:0.9rem;}
         .save-btn {
             flex: 1; padding: 12px; border: none; border-radius: 10px;
             background: var(--price-orange); color: white; font-weight: bold;
@@ -156,12 +176,17 @@
 <div id="toast"></div>
 
 <div class="preview-wrapper">
-    <div id="puzzle-canvas-root" class="ratio-1-1"></div>
+    <div id="puzzle-canvas-root" class="ratio-1-1">
+        <!-- 全局水印 -->
+        <div id="watermarkWrap" style="display:none;">
+            <img id="globalWatermark" src="">
+        </div>
+    </div>
 </div>
 
 <div class="bottom-panel">
-    <!-- 自定义行列 控制器 -->
-    <div class="grid-ctrl">
+    <!-- 行列控制 -->
+    <div class="ctrl-row">
         <input type="number" id="colInput" placeholder="列" min="1" value="3">
         <span>×</span>
         <input type="number" id="rowInput" placeholder="行" min="1" value="3">
@@ -169,20 +194,76 @@
         <button onclick="autoGrid()" style="background:#999">自动排版</button>
     </div>
 
-    <div style="display: flex; gap: 10px; align-items: center;">
-        <input type="number" id="unitPrice" style="width:70px; padding:10px; border:1px solid #eee; border-radius:8px;" value="99" oninput="syncPrices()">
-        <button class="save-btn" onclick="downloadPuzzle()">保存全图到手机</button>
+    <!-- 水印控制：持久化、大小调节 -->
+    <div class="ctrl-row">
+        <label>水印:</label>
+        <input type="file" id="waterInput" accept="image/*">
+        <input class="size-slider" type="range" id="wmSize" min="50" max="400" value="180">
+        <button onclick="clearWatermark()" style="background:#777">移除</button>
+    </div>
+
+    <div class="price-line">
+        <label>单价:</label>
+        <input type="number" id="globalPrice" style="width:70px; padding:10px; border:1px solid #eee; border-radius:8px;" value="99">
+        <button class="save-btn" onclick="downloadPuzzle()">保存整张合成图</button>
     </div>
 </div>
 
 <script>
     const canvasRoot = document.getElementById('puzzle-canvas-root');
-    const unitPriceInput = document.getElementById('unitPrice');
+    const globalPrice = document.getElementById('globalPrice');
     const toast = document.getElementById('toast');
     const ratioDropdown = document.getElementById('ratioDropdown');
     const ratioOptions = document.getElementById('ratioOptions');
+
+    const wmWrap = document.getElementById("watermarkWrap");
+    const wmImg = document.getElementById("globalWatermark");
+    const wmSizeSlider = document.getElementById("wmSize");
+
     let uploadedFiles = [];
-    let currentRatio = 'ratio-1-1'; // 默认比例
+    let currentCols = 3;
+    let watermarkBase64 = "";
+
+    // 读取本地缓存水印
+    (function loadSavedWatermark(){
+        let saved = localStorage.getItem("gridWatermark");
+        let savedSz = localStorage.getItem("gridWmSize")||180;
+        if(saved){
+            watermarkBase64 = saved;
+            wmImg.src = watermarkBase64;
+            wmImg.style.width = savedSz+"px";
+            wmSizeSlider.value = savedSz;
+            wmWrap.style.display = "block";
+        }
+    })();
+
+    // 水印上传
+    document.getElementById("waterInput").addEventListener("change",e=>{
+        let f = e.target.files[0];
+        if(!f)return;
+        const r = new FileReader();
+        r.onload = ev=>{
+            watermarkBase64 = ev.target.result;
+            localStorage.setItem("gridWatermark",watermarkBase64);
+            wmImg.src = watermarkBase64;
+            wmWrap.style.display = "block";
+        }
+        r.readAsDataURL(f);
+    });
+
+    // 水印大小实时调节 + 记忆
+    wmSizeSlider.oninput = ()=>{
+        let s = wmSizeSlider.value;
+        wmImg.style.width = s+"px";
+        localStorage.setItem("gridWmSize",s);
+    };
+
+    function clearWatermark(){
+        watermarkBase64 = "";
+        localStorage.removeItem("gridWatermark");
+        wmWrap.style.display = "none";
+        document.getElementById("waterInput").value = "";
+    }
 
     function showToast(msg) {
         toast.innerHTML = msg;
@@ -190,129 +271,108 @@
         setTimeout(() => { toast.style.display = 'none'; }, 4000);
     }
 
-    // 比例下拉菜单逻辑
     function toggleRatioDropdown() {
         ratioDropdown.classList.toggle('open');
     }
-    // 点击外部关闭下拉
     document.addEventListener('click', (e) => {
-        if (!ratioDropdown.contains(e.target)) {
-            ratioDropdown.classList.remove('open');
+        if (!ratioDropdown.contains(e.target)) ratioDropdown.classList.remove('open');
+    });
+    ratioOptions.querySelectorAll('li').forEach(li=>{
+        li.onclick=()=>{
+            ratioOptions.querySelectorAll(l=>l.classList.remove("active"));
+            li.classList.add("active");
+            document.querySelector(".ratio-select").innerText = li.innerText;
+            canvasRoot.className = li.dataset.ratio;
+            reIndexVisual();
         }
     });
-    // 选择比例
-    ratioOptions.querySelectorAll('li').forEach(li => {
-        li.addEventListener('click', () => {
-            const ratio = li.dataset.ratio;
-            // 更新激活状态
-            ratioOptions.querySelectorAll('li').forEach(item => item.classList.remove('active'));
-            li.classList.add('active');
-            // 更新显示文本
-            document.querySelector('.ratio-select').textContent = li.textContent;
-            // 应用比例
-            setRatioClass(ratio);
-            ratioDropdown.classList.remove('open');
-        });
-    });
-    // 设置比例类
-    function setRatioClass(ratioClass) {
-        canvasRoot.className = ratioClass;
-        currentRatio = ratioClass;
-    }
 
-    // 自动正方形排版
     function autoGrid(){
         const cnt = uploadedFiles.length;
-        if (cnt === 0) return showToast('请先上传图片');
-        const cols = Math.ceil(Math.sqrt(cnt));
-        canvasRoot.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+        if(!cnt) return showToast("先上传图片");
+        currentCols = Math.ceil(Math.sqrt(cnt));
+        canvasRoot.style.gridTemplateColumns = `repeat(${currentCols},1fr)`;
+        reIndexVisual();
     }
-
-    // 手动自定义行列
     function applyCustomGrid(){
-        let c = parseInt(document.getElementById('colInput').value) || 3;
-        let r = parseInt(document.getElementById('rowInput').value) || 3;
-        c = Math.max(1,c);
-        canvasRoot.style.gridTemplateColumns = `repeat(${c}, 1fr)`;
+        let c = +document.getElementById("colInput").value || 3;
+        currentCols = Math.max(1,c);
+        canvasRoot.style.gridTemplateColumns = `repeat(${currentCols},1fr)`;
+        reIndexVisual();
     }
 
-    document.getElementById('imgInput').addEventListener('change', function() {
-        uploadedFiles = Array.from(this.files);
-        canvasRoot.innerHTML = '';
+    // 视觉顺序编号
+    function reIndexVisual(){
+        const slots = Array.from(canvasRoot.querySelectorAll(".grid-slot"));
+        slots.forEach((el,idx)=>{
+            el.querySelector(".slot-index").innerText = idx+1;
+        });
+    }
 
-        uploadedFiles.forEach((file, index) => {
+    document.getElementById("imgInput").addEventListener("change",function(){
+        uploadedFiles = Array.from(this.files);
+        canvasRoot.innerHTML = "";
+        // 重新放回水印
+        canvasRoot.appendChild(wmWrap);
+
+        uploadedFiles.forEach(file=>{
             const reader = new FileReader();
-            reader.onload = (e) => {
-                const slot = document.createElement('div');
-                slot.className = 'grid-slot';
-                // 序号从1开始
-                const indexText = index + 1;
-                slot.innerHTML = `
-                    <div class="slot-index">${indexText}</div>
+            reader.onload = e=>{
+                const slot = document.createElement("div");
+                slot.className="grid-slot";
+                slot.innerHTML=`
+                    <div class="slot-index"></div>
                     <div class="sold-overlay"><span>卖掉了</span></div>
-                    <div class="price-badge">¥ ${unitPriceInput.value}</div>
-                    <div class="slot-tools">
-                        <div class="tool-btn" onclick="event.stopPropagation();this.closest('.grid-slot').classList.toggle('show-price')"><i class="fas fa-tag"></i></div>
-                        <div class="tool-btn" onclick="event.stopPropagation();this.closest('.grid-slot').classList.toggle('is-sold')"><i class="fas fa-check"></i></div>
+                    <div class="price-wrap">
+                        <input class="slot-price" value="${globalPrice.value}" placeholder="价格">
                     </div>
-                    <img src="${e.target.result}" style="object-position: 50% 50%">
+                    <div class="slot-tools">
+                        <div class="tool-btn" onclick="this.closest('.grid-slot').classList.toggle('show-price')"><i class="fas fa-tag"></i></div>
+                        <div class="tool-btn" onclick="this.closest('.grid-slot').classList.toggle('is-sold')"><i class="fas fa-check"></i></div>
+                    </div>
+                    <img src="${e.target.result}">
                 `;
                 canvasRoot.appendChild(slot);
-                const img = slot.querySelector('img');
-                let offset = { x: 0, y: 0 };
-                interact(slot).draggable({
-                    listeners: { move(event) {
-                        offset.x += event.dx; offset.y += event.dy;
-                        img.style.objectPosition = `${50 + offset.x/2}% ${50 + offset.y/2}%`;
-                    }}
+
+                const img = slot.querySelector("img");
+                let ox=0,oy=0;
+                interact(img).draggable({
+                    listeners:{
+                        move(ev){
+                            ox+=ev.dx; oy+=ev.dy;
+                            img.style.objectPosition = `${50+ox/2}% ${50+oy/2}%`;
+                        }
+                    }
                 });
-            };
+                reIndexVisual();
+            }
             reader.readAsDataURL(file);
         });
     });
 
     async function downloadPuzzle() {
-        if (!canvasRoot.children.length) return alert("请先上传图片");
-        
-        showToast('<i class="fas fa-spinner fa-spin"></i> 正在生成高清图...<br>请稍候');
+        if(!canvasRoot.children.length) return alert("先上传图片");
+        showToast('<i class="fas fa-spin fa-spinner"></i> 生成整张合成图...');
 
-        const tools = document.querySelectorAll('.slot-tools');
-        tools.forEach(t => t.style.visibility = 'hidden');
+        const tools = document.querySelectorAll(".slot-tools");
+        tools.forEach(t=>t.style.display="none");
 
-        try {
-            const canvas = await html2canvas(canvasRoot, {
-                useCORS: true,
-                backgroundColor: '#A8D1E7',
-                scale: 2
+        try{
+            const cvs = await html2canvas(canvasRoot,{
+                useCORS:true,
+                backgroundColor:"#A8D1E7",
+                scale:2
             });
-
-            const link = document.createElement('a');
-            const date = new Date().getTime();
-            link.download = `海盐拼图_${date}.png`;
-            link.href = canvas.toDataURL("image/png");
-            link.click();
-
-            showToast('<b>✅ 下载成功！</b><br>1. 查看浏览器下载<br>2. 相册最近添加<br>3. iPhone在「文件」App');
-
-        } catch (err) {
-            showToast('❌ 保存失败，手动截图');
-        } finally {
-            tools.forEach(t => t.style.visibility = 'visible');
+            const a = document.createElement("a");
+            a.download = "海盐合成整图_"+Date.now()+".png";
+            a.href = cvs.toDataURL("image/png");
+            a.click();
+            showToast("✅ 整张合成图(含水印)下载成功");
+        }catch(err){
+            showToast("❌ 下载失败");
+        }finally{
+            tools.forEach(t=>t.style.display="flex");
         }
-    }
-
-    // 兼容旧版按钮，实际使用下拉菜单
-    function setRatio(btn, r) {
-        setRatioClass(r);
-        // 更新下拉菜单显示
-        document.querySelector('.ratio-select').textContent = btn.textContent;
-        ratioOptions.querySelectorAll('li').forEach(li => {
-            li.classList.toggle('active', li.dataset.ratio === r);
-        });
-    }
-
-    function syncPrices() {
-        document.querySelectorAll('.price-badge').forEach(b => b.innerText = `¥ ${unitPriceInput.value}`);
     }
 </script>
 </body>
