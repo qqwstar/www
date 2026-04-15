@@ -1,712 +1,149 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>角色卡画廊 | 新增搜索栏 + 个人关注功能</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/font-awesome@4.7.0/css/font-awesome.min.css"/>
-<script>
-tailwind.config={
-  theme:{
-    extend:{
-      colors:{
-        mainBlue:'#3b82f6',
-        bgLight:'#f1f5f9',
-        textDark:'#1e293b'
-      }
-    }
-  }
-}
-</script>
-<style>
-body{background:#f1f5f9;}
-.page{display:none;}
-.page.active{display:block;}
-.card-hover{transition:0.3s ease;}
-.card-hover:hover{transform:translateY(-6px);box-shadow:0 10px 25px #3b82f638;}
-.btn-interactive{transition: all 0.2s ease;}
-.btn-interactive:hover{opacity:0.9;}
-.btn-interactive:active{transform:scale(0.95);}
+    <meta charset="UTF-8">
+    <title>海盐蓝拼图工坊</title>
+    <style>
+        :root {
+            --sea-salt-blue: #A8D1E7;
+            --deep-sea: #5B8DA5;
+            --bg-color: #F0F7FA;
+        }
 
-.publish-main-btn {
-  transform: translateY(-12px);
-  transition: 0.2s ease;
-}
-.publish-main-btn:active {
-  transform: translateY(-12px) scale(0.95);
-}
+        body {
+            font-family: 'PingFang SC', sans-serif;
+            background-color: var(--bg-color);
+            color: #333;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
 
-input,textarea{outline:none;}
-.tab{transition:0.2s;}
-.tab:active{scale:0.95;}
-.tab-active{background:#3b82f6;color:#fff;}
-#refreshTip{transition:0.3s;}
+        /* 导航栏 */
+        header {
+            width: 100%;
+            padding: 20px;
+            background: #fff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            text-align: center;
+            color: var(--deep-sea);
+        }
 
-img {
-  user-select: none;
-  -webkit-user-select: none;
-  pointer-events: none;
-}
-.search-input:focus{box-shadow:0 0 0 2px #3b82f650;}
-</style>
+        /* 主容器 */
+        .container {
+            display: flex;
+            max-width: 1200px;
+            width: 95%;
+            margin: 30px auto;
+            gap: 20px;
+        }
+
+        /* 控制面板 */
+        .controls {
+            flex: 1;
+            background: #fff;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(168, 209, 231, 0.2);
+        }
+
+        /* 预览区 */
+        .preview-area {
+            flex: 2;
+            background: #fff;
+            min-height: 500px;
+            border-radius: 15px;
+            border: 2px dashed var(--sea-salt-blue);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        h3 { color: var(--deep-sea); border-left: 4px solid var(--sea-salt-blue); padding-left: 10px; }
+
+        .btn-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+
+        button {
+            background-color: var(--sea-salt-blue);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover { background-color: var(--deep-sea); }
+
+        .price-tag {
+            font-size: 24px;
+            color: #e67e22;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+
+        .sticker-item {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            border: 1px solid #eee;
+            margin-right: 10px;
+            cursor: pointer;
+            text-align: center;
+            line-height: 50px;
+        }
+    </style>
 </head>
-<body class="text-textDark bg-bgLight pb-24 overflow-x-hidden">
+<body>
 
-<!-- 首页 -->
-<div id="homePage" class="page active">
-  <header class="py-6 text-center">
-    <h1 class="text-3xl font-bold text-mainBlue">角色卡画廊</h1>
-    <p class="text-slate-500 mt-1">下拉手动刷新 · 全局共享</p>
-  </header>
+<header>
+    <h1>Sea Salt Puzzle Studio | 海盐蓝拼图工坊</h1>
+</header>
 
-  <!-- 全局搜索栏 -->
-  <div class="max-w-6xl mx-auto px-4 mb-4">
-    <div class="relative">
-      <input id="searchInput" onkeyup="doSearch()" class="search-input w-full rounded-full border border-slate-300 py-2.5 px-5 pr-10 bg-white" placeholder="搜索作者 / 角色文案...">
-      <i class="fa fa-search absolute right-4 top-3 text-slate-400"></i>
+<div class="container">
+    <div class="controls">
+        <h3>1. 选择比例</h3>
+        <div class="btn-group">
+            <button>1:1 正方形</button>
+            <button>3:4 经典</button>
+            <button>16:9 宽屏</button>
+        </div>
+
+        <h3>2. 图片张数 (多选)</h3>
+        <input type="file" multiple id="imageInput" style="margin-bottom: 15px;">
+        <p>当前选择: <span id="count">0</span> 张</p>
+
+        <h3>3. 一键贴纸/水印</h3>
+        <div class="btn-group">
+            <div class="sticker-item">🌿</div>
+            <div class="sticker-item">✨</div>
+            <div class="sticker-item">COPY</div>
+        </div>
+
+        <h3>4. 服务定价</h3>
+        <div class="price-tag">¥ 0.00</div>
+        <button style="width: 100%; margin-top: 10px; background: var(--deep-sea);">立即生成并下载</button>
     </div>
-    <div id="searchTip" class="text-sm text-slate-500 mt-2 hidden">搜索结果：<span id="searchCount">0</span> 条</div>
-  </div>
 
-  <div id="refreshTip" class="text-center py-2 text-mainBlue hidden">
-    <i class="fa fa-refresh fa-spin"></i> 同步中...
-  </div>
-
-  <div class="flex justify-center gap-2 px-4 mb-6">
-    <button onclick="switchTab('星野')" class="tab px-5 py-2 rounded-full border border-mainBlue tab-active">星野</button>
-    <button onclick="switchTab('mufy')" class="tab px-5 py-2 rounded-full border border-mainBlue">mufy</button>
-    <button onclick="switchTab('kira')" class="tab px-5 py-2 rounded-full border border-mainBlue">kira</button>
-  </div>
-
-  <!-- 普通卡片列表 / 搜索结果列表 -->
-  <div class="max-w-6xl mx-auto px-4">
-    <div id="cardGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5"></div>
-  </div>
-</div>
-
-<!-- 个人主页 -->
-<div id="userPage" class="page">
-  <div class="max-w-xl mx-auto px-4 pt-10">
-    <div class="bg-white rounded-2xl p-6 text-center shadow-md">
-      <div class="relative inline-block">
-        <img id="userAvatar" class="w-24 h-24 rounded-full object-cover mx-auto border-2 border-mainBlue">
-        <label class="absolute bottom-0 right-0 bg-mainBlue w-7 h-7 rounded-full flex items-center justify-center cursor-pointer btn-interactive">
-          <i class="fa fa-camera text-white text-sm"></i>
-          <input type="file" accept="image/*" class="hidden" onchange="changeAvatar(event)">
-        </label>
-      </div>
-      <input id="userName" type="text" placeholder="输入昵称"
-      class="mt-4 bg-transparent text-2xl font-bold text-center border-b border-slate-300 w-4/5 focus:border-mainBlue"
-      onblur="saveUserInfo()">
-      <textarea id="userBio" rows="3" placeholder="写下你的个人简介..."
-      class="mt-4 w-full bg-slate-100 rounded-lg p-3 resize-none"
-      onblur="saveUserInfo()"></textarea>
-      <div class="flex flex-wrap justify-center gap-3 mt-4">
-        <span class="text-slate-600">我的发布：<span id="myCardCount">0</span></span>
-        <span class="text-slate-600">已关注：<span id="followCount">0</span></span>
-        <span class="text-slate-600">个人屏蔽：<span id="blockCount">0</span></span>
-      </div>
-      <div class="flex gap-3 justify-center mt-4">
-        <button onclick="openFollowList()" class="btn-interactive bg-mainBlue px-4 py-1 rounded-lg text-white text-sm">我的关注</button>
-        <button onclick="openBlockList()" class="btn-interactive bg-slate-500 px-4 py-1 rounded-lg text-white text-sm">屏蔽列表</button>
-      </div>
+    <div class="preview-area" id="preview">
+        <p style="color: #999;">图片预览区域 (Canvas 渲染)</p>
     </div>
-    <h3 class="mt-8 text-xl text-slate-700">我的发布</h3>
-    <div id="myCardGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4"></div>
-  </div>
-</div>
-
-<!-- 关注列表弹窗 -->
-<div id="followModal" class="fixed inset-0 bg-black/60 z-50 hidden p-5 overflow-auto">
-  <div class="max-w-md mx-auto bg-white rounded-2xl p-6">
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-bold text-slate-700">我的关注列表</h2>
-      <button onclick="closeFollowList()" class="btn-interactive text-2xl text-slate-500"><i class="fa fa-times"></i></button>
-    </div>
-    <div id="followWrap" class="space-y-3 mb-6"></div>
-    <button onclick="closeFollowList()" class="btn-interactive w-full bg-mainBlue text-white py-3 rounded-lg">
-      <i class="fa fa-sign-out mr-1"></i> 关闭
-    </button>
-  </div>
-</div>
-
-<!-- 屏蔽列表弹窗 -->
-<div id="blockModal" class="fixed inset-0 bg-black/60 z-50 hidden p-5 overflow-auto">
-  <div class="max-w-md mx-auto bg-white rounded-2xl p-6">
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-bold text-slate-700">个人屏蔽管理</h2>
-      <button onclick="closeBlockList()" class="btn-interactive text-2xl text-slate-500"><i class="fa fa-times"></i></button>
-    </div>
-    <div id="blockList" class="space-y-3 mb-6"></div>
-    <button onclick="closeBlockList()" class="btn-interactive w-full bg-mainBlue text-white py-3 rounded-lg">
-      <i class="fa fa-sign-out mr-1"></i> 退出屏蔽列表
-    </button>
-  </div>
-</div>
-
-<!-- 底部导航 -->
-<div class="fixed bottom-0 left-0 w-full bg-white shadow-lg border-t border-slate-200 flex items-center justify-around py-2 z-40">
-  <button onclick="switchPage('home')" class="btn-interactive flex-1 py-3 text-center text-slate-600">
-    <i class="fa fa-th-large block text-xl"></i><span class="text-sm">首页</span>
-  </button>
-  <button onclick="openUploadModal()" class="publish-main-btn w-16 h-16 rounded-full bg-mainBlue flex items-center justify-center text-white font-bold">
-    发布
-  </button>
-  <button onclick="switchPage('user')" class="btn-interactive flex-1 py-3 text-center text-slate-600">
-    <i class="fa fa-user block text-xl"></i><span class="text-sm">我的</span>
-  </button>
-</div>
-
-<!-- 发布弹窗 -->
-<div id="uploadModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
-  <div class="bg-white w-full max-w-md rounded-2xl p-6">
-    <h2 class="text-xl mb-2 font-bold text-slate-700">发布全局角色卡</h2>
-    <p class="text-xs text-slate-500 mb-3">草稿自动保存 · 发布所有人可见</p>
-    <div class="flex gap-2 mb-4">
-      <label class="text-sm text-slate-600">
-        <input name="cateRadio" type="radio" value="星野" checked class="mr-1">星野
-      </label>
-      <label class="text-sm text-slate-600">
-        <input name="cateRadio" type="radio" value="mufy" class="mr-1">mufy
-      </label>
-      <label class="text-sm text-slate-600">
-        <input name="cateRadio" type="radio" value="kira" class="mr-1">kira
-      </label>
-    </div>
-    <input type="file" id="imgUpload" accept="image/*" class="w-full bg-slate-100 rounded-lg p-3 mb-3">
-    <div id="draftPreview" class="hidden mb-3">
-      <img id="draftImg" class="w-32 h-32 rounded-lg">
-    </div>
-    <textarea id="descInput" rows="4" class="w-full bg-slate-100 p-3 resize-none" placeholder="角色简介..."></textarea>
-    <div class="mt-5 flex gap-3">
-      <button onclick="closeUploadModal()" class="btn-interactive flex-1 bg-slate-400 text-white py-2 rounded-lg">返回</button>
-      <button onclick="clearDraft()" class="btn-interactive flex-1 bg-red-500 text-white py-2 rounded-lg">清空草稿</button>
-      <button onclick="submitPublish()" class="btn-interactive flex-1 bg-mainBlue text-white py-2 rounded-lg">确认发布</button>
-    </div>
-  </div>
-</div>
-
-<!-- 详情弹窗 -->
-<div id="detailModal" class="fixed inset-0 bg-black/60 z-50 hidden p-5 overflow-auto">
-  <button onclick="closeDetailModal()" class="btn-interactive float-right text-3xl mb-4 text-white"><i class="fa fa-times"></i></button>
-  <div class="max-w-lg w-full mx-auto">
-    <canvas id="protectCanvas" class="w-full max-h-[60vh] rounded-xl"></canvas>
-    <p class="text-slate-200 text-sm mt-2">分区：<span id="detailCate"></span></p>
-    <p id="modalDesc" class="mt-3 text-white whitespace-pre-wrap"></p>
-    <div class="mt-4">
-      <button id="followAuthorBtn" onclick="toggleFollowCurrent()" class="btn-interactive w-full bg-indigo-500 text-white py-2 rounded-lg mb-3">
-        关注该作者
-      </button>
-    </div>
-    <div class="mt-2 flex gap-3">
-      <button id="delBtn" onclick="confirmDelete()" class="btn-interactive flex-1 bg-red-600 text-white py-3 rounded-lg">
-        <i class="fa fa-trash mr-1"></i> 删除我的卡片
-      </button>
-      <button onclick="confirmBlockCard()" class="btn-interactive flex-1 bg-orange-500 text-white py-3">
-        <i class="fa fa-ban mr-1"></i> 屏蔽卡片
-      </button>
-      <button onclick="confirmBlockAuthor()" class="btn-interactive flex-1 bg-blue-700 text-white py-3">
-        <i class="fa fa-user-times mr-1"></i> 屏蔽作者
-      </button>
-    </div>
-  </div>
 </div>
 
 <script>
-let tempImg = "";
-let nowTab = "星野";
-let currentCard = null;
-const canvas = document.getElementById('protectCanvas');
-const ctx = canvas.getContext('2d');
-
-const GLOBAL_CARD_KEY = "globalAllCards";
-const BLOCK_KEY = "userBlockList";
-const DRAFT_KEY = "cardDraft";
-const USER_KEY = "userProfile";
-const FOLLOW_KEY = "userFollowList";
-
-document.addEventListener('copy',e=>e.preventDefault());
-document.addEventListener('cut',e=>e.preventDefault());
-
-// 水印
-function drawWatermark(ctx,w,h){
-  ctx.save();
-  ctx.globalAlpha = 0.12;
-  ctx.fillStyle="#999";
-  ctx.font = `${Math.max(18,w/12)}px sans-serif`;
-  ctx.translate(w/2,h/2);
-  ctx.rotate(-Math.PI/4);
-  let step = 120;
-  for(let y = -h; y < w; y += step){
-    ctx.fillText("仅展示 · 禁止盗用",-w,y);
-  }
-  ctx.restore();
-}
-function drawProtectImage(imgSrc){
-  const img = new Image();
-  img.crossOrigin="anonymous";
-  img.onload = ()=>{
-    canvas.width = img.width;
-    canvas.height = img.height;
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.drawImage(img,0,0);
-    drawWatermark(ctx,canvas.width,canvas.height);
-  }
-  img.src = imgSrc;
-}
-
-// ========== 关注储存 ==========
-function getFollowList(){
-  return JSON.parse(localStorage.getItem(FOLLOW_KEY)) || [];
-}
-function saveFollowList(arr){
-  localStorage.setItem(FOLLOW_KEY, JSON.stringify(arr));
-}
-function isFollowed(name){
-  return getFollowList().includes(name);
-}
-function toggleFollowCurrent(){
-  if(!currentCard) return;
-  let me = getUserInfo();
-  if(currentCard.author === me.name){
-    alert("不能关注自己");
-    return;
-  }
-  let list = getFollowList();
-  let auth = currentCard.author;
-  if(list.includes(auth)){
-    list = list.filter(x=>x!==auth);
-  }else{
-    list.push(auth);
-  }
-  saveFollowList(list);
-  refreshFollowBtn();
-}
-function refreshFollowBtn(){
-  if(!currentCard) return;
-  let btn = document.getElementById("followAuthorBtn");
-  if(isFollowed(currentCard.author)){
-    btn.innerText = "取消关注";
-    btn.classList.remove("bg-indigo-500");
-    btn.classList.add("bg-slate-600");
-  }else{
-    btn.innerText = "关注该作者";
-    btn.classList.add("bg-indigo-500");
-    btn.classList.remove("bg-slate-600");
-  }
-}
-function openFollowList(){
-  let list = getFollowList();
-  let wrap = document.getElementById("followWrap");
-  wrap.innerHTML = "";
-  if(list.length === 0){
-    wrap.innerHTML = '<p class="text-slate-400 text-center py-6">暂无关注作者</p>';
-  }else{
-    list.forEach(name=>{
-      let div = document.createElement("div");
-      div.className = "flex justify-between items-center p-3 bg-slate-100 rounded-lg";
-      div.innerHTML = `<span>${name}</span>
-      <button onclick="unfollowOne('${name}')" class="text-red-500 btn-interactive">取消关注</button>`;
-      wrap.appendChild(div);
-    })
-  }
-  document.getElementById("followModal").classList.remove("hidden");
-}
-function closeFollowList(){
-  document.getElementById("followModal").classList.add("hidden");
-}
-function unfollowOne(name){
-  let arr = getFollowList().filter(x=>x!==name);
-  saveFollowList(arr);
-  openFollowList();
-  renderUserPage();
-}
-
-// ========== 搜索功能 ==========
-let searchActive = false;
-function doSearch(){
-  let key = document.getElementById("searchInput").value.trim().toLowerCase();
-  if(!key){
-    searchActive = false;
-    document.getElementById("searchTip").classList.add("hidden");
-    renderHomeCards();
-    return;
-  }
-  searchActive = true;
-  let all = getFilteredCards();
-  let res = [];
-  Object.values(all).forEach(group=>{
-    group.forEach(c=>{
-      if(c.desc.toLowerCase().includes(key) || c.author.toLowerCase().includes(key)){
-        res.push(c);
-      }
-    })
-  });
-  document.getElementById("searchTip").classList.remove("hidden");
-  document.getElementById("searchCount").innerText = res.length;
-  renderSearchResult(res);
-}
-function renderSearchResult(list){
-  let wrap = document.getElementById("cardGrid");
-  wrap.innerHTML = "";
-  if(list.length===0){
-    wrap.innerHTML = '<p class="col-span-full text-center text-slate-400 py-10">暂无匹配结果</p>';
-    return;
-  }
-  list.forEach(item=>{
-    let div = document.createElement("div");
-    div.className = "bg-white rounded-xl overflow-hidden shadow-sm card-hover cursor-pointer";
-    div.onclick = ()=>openDetail(item);
-    div.innerHTML = `
-      <canvas class="w-full h-52"></canvas>
-      <div class="p-3">
-        <p class="text-sm text-slate-700 line-clamp-2">${item.desc}</p>
-        <p class="text-xs text-slate-400 mt-1">by ${item.author}</p>
-      </div>
-    `;
-    wrap.appendChild(div);
-    const cvs = div.querySelector("canvas");
-    const cx = cvs.getContext("2d");
-    let img = new Image;
-    img.src = item.img;
-    img.onload = ()=>{
-      cvs.width = img.width;
-      cvs.height = img.height;
-      cx.drawImage(img,0,0);
-      drawWatermark(cx,cvs.width,cvs.height);
-    }
-  })
-}
-
-// 全局数据
-function getGlobalCards(){
-  let raw = localStorage.getItem(GLOBAL_CARD_KEY);
-  if(!raw) {
-    let initData = {"星野":[],"mufy":[],"kira":[]};
-    localStorage.setItem(GLOBAL_CARD_KEY, JSON.stringify(initData));
-    return initData;
-  }
-  return JSON.parse(raw);
-}
-function saveGlobalCards(obj){
-  localStorage.setItem(GLOBAL_CARD_KEY, JSON.stringify(obj));
-}
-
-// 屏蔽
-function getBlockList(){
-  return JSON.parse(localStorage.getItem(BLOCK_KEY))||{cards:[],authors:[]}
-}
-function saveBlockList(list){
-  localStorage.setItem(BLOCK_KEY,JSON.stringify(list))
-}
-function getFilteredCards(){
-  let all = getGlobalCards();
-  let blk = getBlockList();
-  let res = {};
-  for(let key in all){
-    res[key] = all[key].filter(it => !blk.cards.includes(it.id) && !blk.authors.includes(it.authorId));
-  }
-  return res;
-}
-
-// 切换专区
-function switchTab(name){
-  nowTab = name;
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('tab-active'));
-  event.target.classList.add('tab-active');
-  document.getElementById("searchInput").value="";
-  searchActive=false;
-  document.getElementById("searchTip").classList.add("hidden");
-  renderHomeCards();
-}
-
-// 草稿
-function getDraft(){return JSON.parse(localStorage.getItem(DRAFT_KEY))||{img:"",desc:""}}
-function autoSaveDraft(){
-  let d={img:tempImg,desc:document.getElementById("descInput").value}
-  localStorage.setItem(DRAFT_KEY,JSON.stringify(d))
-}
-function loadDraft(){
-  let d=getDraft();
-  tempImg=d.img;
-  document.getElementById("descInput").value=d.desc;
-  if(d.img){
-    document.getElementById("draftImg").src=d.img;
-    document.getElementById("draftPreview").classList.remove("hidden")
-  }
-}
-function clearDraft(){
-  localStorage.removeItem(DRAFT_KEY);
-  tempImg="";
-  document.getElementById("imgUpload").value="";
-  document.getElementById("descInput").value="";
-  document.getElementById("draftPreview").classList.add("hidden");
-}
-
-// 用户
-function getUserInfo(){return JSON.parse(localStorage.getItem(USER_KEY))||{avatar:"",name:"匿名",bio:"暂无简介"}}
-function saveUserInfo(){
-  let u=getUserInfo();
-  u.name=document.getElementById("userName").value;
-  u.bio=document.getElementById("userBio").value;
-  localStorage.setItem(USER_KEY,JSON.stringify(u));
-}
-function changeAvatar(e){
-  let f=e.target.files[0];if(!f)return;
-  let r=new FileReader();
-  r.onload=res=>{
-    let u=getUserInfo();
-    u.avatar=res.target.result;
-    localStorage.setItem(USER_KEY,JSON.stringify(u));
-    document.getElementById("userAvatar").src=u.avatar
-  }
-  r.readAsDataURL(f)
-}
-function loadUserProfile(){
-  let u=getUserInfo();
-  document.getElementById("userAvatar").src=u.avatar||"https://api.dicebear.com/7.x/adventurer";
-  document.getElementById("userName").value=u.name;
-  document.getElementById("userBio").value=u.bio;
-}
-
-// 页面切换
-function switchPage(type){
-  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
-  if(type==='home'){
-    document.getElementById('homePage').classList.add('active');
-    renderHomeCards();
-  }
-  if(type==='user'){
-    document.getElementById('userPage').classList.add('active');
-    loadUserProfile();
-    renderUserPage();
-  }
-}
-
-// 屏蔽弹窗
-function openBlockList(){
-  let b = getBlockList();
-  let wrap = document.getElementById("blockList");
-  wrap.innerHTML = "";
-  if(b.cards.length===0 && b.authors.length===0){
-    wrap.innerHTML = `<p class="text-slate-500 text-center py-4">暂无屏蔽内容</p>`;
-  }else{
-    b.cards.forEach(id=>{
-      let d = document.createElement("div");
-      d.className="p-3 bg-slate-100 rounded-lg flex justify-between";
-      d.innerHTML=`<span>卡片ID:${id}</span><button onclick="unblockCard(${id})" class="text-mainBlue">解除</button>`;
-      wrap.appendChild(d);
-    })
-    b.authors.forEach(n=>{
-      let d = document.createElement("div");
-      d.className="p-3 bg-slate-100 rounded-lg flex justify-between";
-      d.innerHTML=`<span>作者:${n}</span><button onclick="unblockAuthor('${n}')" class="text-mainBlue">解除</button>`;
-      wrap.appendChild(d);
-    })
-  }
-  document.getElementById("blockModal").classList.remove("hidden");
-}
-function closeBlockList(){
-  document.getElementById("blockModal").classList.add("hidden");
-}
-function unblockCard(id){
-  let b=getBlockList();
-  b.cards = b.cards.filter(x=>x!==id);
-  saveBlockList(b);
-  openBlockList();
-  renderHomeCards();
-}
-function unblockAuthor(n){
-  let b=getBlockList();
-  b.authors = b.authors.filter(x=>x!==n);
-  saveBlockList(b);
-  openBlockList();
-  renderHomeCards();
-}
-
-// 发布
-function openUploadModal(){ loadDraft(); document.getElementById('uploadModal').classList.remove('hidden'); }
-function closeUploadModal(){ autoSaveDraft(); document.getElementById("uploadModal").classList.add("hidden"); }
-
-document.getElementById("imgUpload").addEventListener("change",e=>{
-  let f = e.target.files[0];
-  if(!f) return;
-  let fr = new FileReader();
-  fr.onload = ev=>{
-    tempImg = ev.target.result;
-    document.getElementById("draftImg").src = tempImg;
-    document.getElementById("draftPreview").classList.remove("hidden");
-    autoSaveDraft();
-  }
-  fr.readAsDataURL(f);
-})
-document.getElementById('descInput').addEventListener('input', autoSaveDraft);
-
-function submitPublish(){
-  let desc = document.getElementById("descInput").value.trim();
-  let sel = document.querySelector('input[name="cateRadio"]:checked');
-
-  if(!tempImg){alert("请先上传图片");return;}
-  if(!desc){alert("请填写简介");return;}
-  if(!sel){alert("请选择分区");return;}
-
-  let cate = sel.value;
-  let user = getUserInfo();
-  let allData = getGlobalCards();
-
-  let newCard = {
-    id: Date.now(),
-    img: tempImg,
-    desc: desc,
-    category: cate,
-    author: user.name || "匿名",
-    authorId: user.name || "匿名"
-  };
-
-  allData[cate].push(newCard);
-  saveGlobalCards(allData);
-
-  clearDraft();
-  closeUploadModal();
-  renderHomeCards();
-}
-
-// 首页渲染
-function renderHomeCards(){
-  let freshData = getFilteredCards();
-  let currentList = freshData[nowTab] || [];
-  let wrap = document.getElementById("cardGrid");
-  wrap.innerHTML = "";
-
-  if(currentList.length === 0){
-    wrap.innerHTML = '<p class="col-span-full text-center text-slate-400 py-10">当前专区暂无发布内容</p>';
-    return;
-  }
-
-  currentList.forEach(item=>{
-    let div = document.createElement("div");
-    div.className = "bg-white rounded-xl overflow-hidden shadow-sm card-hover cursor-pointer";
-    div.onclick = ()=>openDetail(item);
-    div.innerHTML = `
-      <canvas class="w-full h-52"></canvas>
-      <div class="p-3">
-        <p class="text-sm text-slate-700 line-clamp-2">${item.desc}</p>
-        <p class="text-xs text-slate-400 mt-1">by ${item.author}</p>
-      </div>
-    `;
-    wrap.appendChild(div);
-    const cvs = div.querySelector("canvas");
-    const cx = cvs.getContext("2d");
-    let img = new Image;
-    img.src = item.img;
-    img.onload = ()=>{
-      cvs.width = img.width;
-      cvs.height = img.height;
-      cx.drawImage(img,0,0);
-      drawWatermark(cx,cvs.width,cvs.height);
-    }
-  })
-}
-
-// 个人页
-function renderUserPage(){
-  let me = getUserInfo();
-  let all = getGlobalCards();
-  let mine = [];
-  Object.values(all).forEach(arr=>{
-    mine.push(...arr.filter(x=>x.authorId === me.name))
-  })
-  let blk = getBlockList();
-  document.getElementById("myCardCount").innerText = mine.length;
-  document.getElementById("blockCount").innerText = blk.cards.length + blk.authors.length;
-  document.getElementById("followCount").innerText = getFollowList().length;
-
-  let wrap = document.getElementById("myCardGrid");
-  wrap.innerHTML = "";
-  mine.forEach(item=>{
-    let d = document.createElement("div");
-    d.className = "bg-white rounded-2xl shadow-sm overflow-hidden cursor-pointer";
-    d.onclick = ()=>openDetail(item);
-    d.innerHTML = `<canvas class="w-full h-40"></canvas>`;
-    wrap.appendChild(d);
-    let cvs = d.querySelector("canvas");
-    let cx = cvs.getContext("2d");
-    let img = new Image;
-    img.src = item.img;
-    img.onload = ()=>{
-      cvs.width = img.width;
-      cvs.height = img.height;
-      cx.drawImage(img,0,0);
-      drawWatermark(cx,cvs.width,cvs.height);
-    }
-  })
-}
-
-// 卡片详情
-function openDetail(it){
-  currentCard = it;
-  let u = getUserInfo();
-  document.getElementById("delBtn").style.display = (it.authorId === u.name) ? "block":"none";
-  drawProtectImage(it.img);
-  document.getElementById("modalDesc").innerText = it.desc;
-  document.getElementById("detailCate").innerText = it.category + " · by "+it.author;
-  refreshFollowBtn();
-  document.getElementById("detailModal").classList.remove("hidden");
-}
-function closeDetailModal(){
-  document.getElementById("detailModal").classList.add("hidden");
-  currentCard=null;
-}
-
-function confirmDelete(){
-  if(!currentCard)return;
-  if(!confirm("确定删除？"))return;
-  let g = getGlobalCards();
-  g[currentCard.category] = g[currentCard.category].filter(x=>x.id !== currentCard.id);
-  saveGlobalCards(g);
-  closeDetailModal();
-  renderHomeCards();
-  renderUserPage();
-}
-function confirmBlockCard(){
-  if(!currentCard)return;
-  let b = getBlockList();
-  if(b.cards.includes(currentCard.id)) return;
-  b.cards.push(currentCard.id);
-  saveBlockList(b);
-  closeDetailModal();
-  renderHomeCards();
-}
-function confirmBlockAuthor(){
-  if(!currentCard)return;
-  let b = getBlockList();
-  if(b.authors.includes(currentCard.authorId)) return;
-  b.authors.push(currentCard.authorId);
-  saveBlockList(b);
-  closeDetailModal();
-  renderHomeCards();
-}
-
-// 下拉刷新
-let startY=0;
-document.addEventListener('touchstart',e=>startY=e.touches[0].clientY);
-document.addEventListener('touchmove',e=>{
-  let my = e.touches[0].clientY;
-  if(window.scrollY<=0 && my-startY>60){
-    document.getElementById('refreshTip').classList.remove('hidden');
-  }
-});
-document.addEventListener('touchend',()=>{
-  if(window.scrollY<=0){
-    setTimeout(()=>{
-      renderHomeCards();
-      document.getElementById('refreshTip').classList.add('hidden');
-    },600)
-  }
-});
-
-window.onload = renderHomeCards();
+    // 基础交互逻辑
+    const input = document.getElementById('imageInput');
+    const countDisplay = document.getElementById('count');
+    
+    input.onchange = (e) => {
+        const files = e.target.files;
+        countDisplay.innerText = files.length;
+        // 这里可以接入 Canvas API 进行图片拼接预览
+        alert('成功导入 ' + files.length + ' 张图片！');
+    };
 </script>
+
 </body>
 </html>
